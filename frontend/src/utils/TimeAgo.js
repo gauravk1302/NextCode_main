@@ -1,0 +1,17 @@
+export function timeAgo(date) {
+  if (!date) return "recently";
+
+  const diff = Math.max(0, Date.now() - new Date(date).getTime());
+  const min = Math.floor(diff / 60000);
+
+  if (min < 1) return "just now";
+  if (min < 60) return `${min}m ago`;
+
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+
+  const day = Math.floor(hr / 24);
+  if (day < 30) return `${day}d ago`;
+
+  return new Date(date).toLocaleDateString();
+}
