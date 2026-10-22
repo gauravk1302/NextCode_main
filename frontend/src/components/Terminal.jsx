@@ -31,10 +31,6 @@ export default function Terminal({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
 
-  // --------------------------------------------------
-  // KEEP CALLBACK UPDATED
-  // --------------------------------------------------
-
   useEffect(() => {
     callbackRef.current = onSocketReady;
   }, [onSocketReady]);
@@ -42,10 +38,6 @@ export default function Terminal({
   useEffect(() => {
     filesChangedRef.current = onFilesChanged;
   }, [onFilesChanged]);
-
-  // --------------------------------------------------
-  // TERMINAL SETUP
-  // --------------------------------------------------
 
   useEffect(() => {
     if (
@@ -58,30 +50,19 @@ export default function Terminal({
 
     const container = containerRef.current;
 
-    // ------------------------------------------------
-    // CREATE XTERM
-    // ------------------------------------------------
-
     const terminal = new XTerminal({
       cursorBlink: true,
       cursorStyle: "block",
-
       fontSize: DEFAULT_FONT_SIZE,
-
-      fontFamily:
-        "Menlo, Monaco, Consolas, monospace",
-
+      fontFamily: "Menlo, Monaco, Consolas, monospace",
       scrollback: 5000,
-
-      // Windows par right-click / selection ke liye
       rightClickSelectsWord: false,
       allowProposedApi: true,
-
       theme: {
-        background: "#0d0d0f",
+        background: "#000000",
         foreground: "#d4d4d4",
-        cursor: "#ffffff",
-        selectionBackground: "#264f78",
+        cursor: "#E2F952",
+        selectionBackground: "rgba(226, 249, 82, 0.25)",
       },
     });
 
@@ -91,7 +72,6 @@ export default function Terminal({
     terminal.loadAddon(fitAddon);
     terminal.loadAddon(searchAddon);
 
-    // Clickable links (Ctrl+Click jaisa VS Code mein)
     terminal.loadAddon(
       new WebLinksAddon((event, uri) => {
         if (event.ctrlKey || event.metaKey) {
@@ -106,10 +86,6 @@ export default function Terminal({
     fitAddonRef.current = fitAddon;
     searchAddonRef.current = searchAddon;
 
-    // ------------------------------------------------
-    // INITIAL FIT
-    // ------------------------------------------------
-
     const fitTerminal = () => {
       try {
         if (!containerRef.current) {
@@ -118,23 +94,15 @@ export default function Terminal({
 
         fitAddon.fit();
       } catch (error) {
-        console.error(
-          "Terminal fit error:",
-          error
-        );
+        console.error("Terminal fit error:", error);
       }
     };
 
-    // Wait for browser layout
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         fitTerminal();
       });
     });
-
-    // ------------------------------------------------
-    // COPY / PASTE HELPERS
-    // ------------------------------------------------
 
     const copySelection = async () => {
       const text = terminal.getSelection();
@@ -144,7 +112,6 @@ export default function Terminal({
       try {
         await navigator.clipboard.writeText(text);
       } catch (err) {
-        // Fallback (http / old browsers)
         try {
           const area = document.createElement("textarea");
           area.value = text;
@@ -167,17 +134,12 @@ export default function Terminal({
         const text = await navigator.clipboard.readText();
 
         if (text) {
-          // paste() multi-line aur bracketed paste sahi handle karta hai
           terminal.paste(text);
         }
       } catch (err) {
         console.error("Paste failed:", err);
       }
     };
-
-    // ------------------------------------------------
-    // FONT ZOOM HELPERS
-    // ------------------------------------------------
 
     const setFontSize = (size) => {
       const next = Math.max(
@@ -200,19 +162,11 @@ export default function Terminal({
 
     const zoomReset = () => setFontSize(DEFAULT_FONT_SIZE);
 
-    // ------------------------------------------------
-    // CLEAR HELPER
-    // ------------------------------------------------
-
     const clearScreen = () => {
       terminal.clear();
       terminal.write("\x1b[2J\x1b[H");
       terminal.focus();
     };
-
-    // ------------------------------------------------
-    // KEYBOARD SHORTCUTS
-    // ------------------------------------------------
 
     terminal.attachCustomKeyEventHandler((e) => {
       if (e.type !== "keydown") return true;
@@ -220,7 +174,6 @@ export default function Terminal({
       const key = e.key.toLowerCase();
       const ctrl = e.ctrlKey || e.metaKey;
 
-      // Ctrl+C: selection ho to copy, warna normal Ctrl+C (command stop)
       if (ctrl && !e.shiftKey && key === "c" && terminal.hasSelection()) {
         e.preventDefault();
         copySelection();
@@ -228,21 +181,18 @@ export default function Terminal({
         return false;
       }
 
-      // Ctrl+Shift+C: hamesha copy
       if (ctrl && e.shiftKey && key === "c") {
         e.preventDefault();
         copySelection();
         return false;
       }
 
-      // Ctrl+V / Ctrl+Shift+V: paste
       if (ctrl && key === "v") {
         e.preventDefault();
         pasteClipboard();
         return false;
       }
 
-      // Ctrl+Insert: copy, Shift+Insert: paste
       if (e.ctrlKey && e.key === "Insert") {
         e.preventDefault();
         copySelection();
@@ -255,21 +205,18 @@ export default function Terminal({
         return false;
       }
 
-      // Ctrl+Shift+A: select all
       if (ctrl && e.shiftKey && key === "a") {
         e.preventDefault();
         terminal.selectAll();
         return false;
       }
 
-      // Ctrl+K: clear terminal
       if (ctrl && !e.shiftKey && key === "k") {
         e.preventDefault();
         clearScreen();
         return false;
       }
 
-      // Ctrl+F: search bar kholo
       if (ctrl && !e.shiftKey && key === "f") {
         e.preventDefault();
         setSearchOpen(true);
@@ -282,7 +229,6 @@ export default function Terminal({
         return false;
       }
 
-      // Zoom: Ctrl + / Ctrl - / Ctrl 0
       if (ctrl && (e.key === "=" || e.key === "+")) {
         e.preventDefault();
         zoomIn();
@@ -301,7 +247,6 @@ export default function Terminal({
         return false;
       }
 
-      // Ctrl+Home / Ctrl+End: scroll top / bottom
       if (ctrl && e.key === "Home") {
         e.preventDefault();
         terminal.scrollToTop();
@@ -314,7 +259,6 @@ export default function Terminal({
         return false;
       }
 
-      // Ctrl+Up / Ctrl+Down: ek line scroll (VS Code jaisa)
       if (ctrl && e.key === "ArrowUp") {
         e.preventDefault();
         terminal.scrollLines(-1);
@@ -327,7 +271,6 @@ export default function Terminal({
         return false;
       }
 
-      // Shift+PageUp / Shift+PageDown: page scroll
       if (e.shiftKey && e.key === "PageUp") {
         e.preventDefault();
         terminal.scrollPages(-1);
@@ -343,40 +286,22 @@ export default function Terminal({
       return true;
     });
 
-    // ------------------------------------------------
-    // TERMINAL SERVICE URL
-    // ------------------------------------------------
-
-    const terminalUrl =
-      import.meta.env.VITE_TERMINAL_URL;
+    const terminalUrl = import.meta.env.VITE_TERMINAL_URL;
 
     if (!terminalUrl) {
-      terminal.write(
-        "\r\n\x1b[31mVITE_TERMINAL_URL missing\x1b[0m\r\n"
-      );
+      terminal.write("\r\n\x1b[31mVITE_TERMINAL_URL missing\x1b[0m\r\n");
 
       return () => {
         terminal.dispose();
       };
     }
 
-    // ------------------------------------------------
-    // SOCKET CONNECTION
-    // ------------------------------------------------
-
-    const socket = io(
-      terminalUrl,
-      {
-        transports: ["websocket"],
-        withCredentials: true,
-      }
-    );
+    const socket = io(terminalUrl, {
+      transports: ["websocket"],
+      withCredentials: true,
+    });
 
     socketRef.current = socket;
-
-    // ------------------------------------------------
-    // RESIZE TERMINAL
-    // ------------------------------------------------
 
     function resizeTerminal() {
       try {
@@ -397,210 +322,89 @@ export default function Terminal({
           return;
         }
 
-        socket.emit(
-          "terminal:resize",
-          {
-            cols,
-            rows,
-          }
-        );
+        socket.emit("terminal:resize", { cols, rows });
       } catch (error) {
-        console.error(
-          "Terminal resize error:",
-          error
-        );
+        console.error("Terminal resize error:", error);
       }
     }
-
-    // ------------------------------------------------
-    // SOCKET CONNECT
-    // ------------------------------------------------
 
     socket.on("connect", () => {
       setConnected(true);
 
-      callbackRef.current?.(
-        socket.id
-      );
+      callbackRef.current?.(socket.id);
 
-      // Make sure xterm dimensions are ready
       fitTerminal();
 
-      // ----------------------------------------------
-      // INITIALIZE PTY
-      // ----------------------------------------------
-
-      socket.emit(
-        "terminal:init",
-        {
-          projectId,
-          userId,
-
-          // Send actual xterm dimensions
-          cols: terminal.cols,
-          rows: terminal.rows,
-        }
-      );
+      socket.emit("terminal:init", {
+        projectId,
+        userId,
+        cols: terminal.cols,
+        rows: terminal.rows,
+      });
     });
 
-    // ------------------------------------------------
-    // PTY READY
-    // ------------------------------------------------
+    socket.on("terminal:ready", ({ cols, rows }) => {
+      console.log("TERMINAL READY:", { cols, rows });
 
-    socket.on(
-      "terminal:ready",
-      ({ cols, rows }) => {
-        console.log(
-          "TERMINAL READY:",
-          {
-            cols,
-            rows,
-          }
-        );
-
+      requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            resizeTerminal();
-
-            terminal.focus();
-          });
+          resizeTerminal();
+          terminal.focus();
         });
-      }
-    );
-
-    // ------------------------------------------------
-    // TERMINAL OUTPUT
-    // ------------------------------------------------
-
-    socket.on(
-      "terminal:data",
-      (data) => {
-        if (
-          data === undefined ||
-          data === null
-        ) {
-          return;
-        }
-
-        terminal.write(
-          String(data)
-        );
-      }
-    );
-
-    // ------------------------------------------------
-    // FILES CHANGED (terminal se file banayi/delete ki)
-    // Explorer ko refresh karne ke liye
-    // ------------------------------------------------
-
-    socket.on(
-      "terminal:files-changed",
-      () => {
-        filesChangedRef.current?.();
-      }
-    );
-
-    // ------------------------------------------------
-    // CLEAR TERMINAL EVENT
-    // ------------------------------------------------
-
-    socket.on(
-      "terminal:clear",
-      () => {
-        clearScreen();
-      }
-    );
-
-    // ------------------------------------------------
-    // CONNECTION ERROR
-    // ------------------------------------------------
-
-    socket.on(
-      "connect_error",
-      (error) => {
-        setConnected(false);
-
-        terminal.write(
-          `\r\n\x1b[31m${error.message}\x1b[0m\r\n`
-        );
-      }
-    );
-
-    // ------------------------------------------------
-    // DISCONNECT
-    // ------------------------------------------------
-
-    socket.on(
-      "disconnect",
-      () => {
-        setConnected(false);
-
-        callbackRef.current?.(
-          null
-        );
-      }
-    );
-
-    // ------------------------------------------------
-    // USER INPUT
-    // ------------------------------------------------
-
-    const disposable =
-      terminal.onData(
-        (data) => {
-          if (!socket.connected) {
-            return;
-          }
-
-          socket.emit(
-            "terminal:write",
-            data
-          );
-        }
-      );
-
-    // ------------------------------------------------
-    // WINDOW RESIZE
-    // ------------------------------------------------
-
-    const handleWindowResize =
-      () => {
-        resizeTerminal();
-      };
-
-    window.addEventListener(
-      "resize",
-      handleWindowResize
-    );
-
-    // ------------------------------------------------
-    // CONTAINER RESIZE
-    // ------------------------------------------------
-
-    const resizeObserver =
-      new ResizeObserver(() => {
-        resizeTerminal();
       });
+    });
+
+    socket.on("terminal:data", (data) => {
+      if (data === undefined || data === null) {
+        return;
+      }
+
+      terminal.write(String(data));
+    });
+
+    socket.on("terminal:files-changed", () => {
+      filesChangedRef.current?.();
+    });
+
+    socket.on("terminal:clear", () => {
+      clearScreen();
+    });
+
+    socket.on("connect_error", (error) => {
+      setConnected(false);
+      terminal.write(`\r\n\x1b[31m${error.message}\x1b[0m\r\n`);
+    });
+
+    socket.on("disconnect", () => {
+      setConnected(false);
+      callbackRef.current?.(null);
+    });
+
+    const disposable = terminal.onData((data) => {
+      if (!socket.connected) {
+        return;
+      }
+
+      socket.emit("terminal:write", data);
+    });
+
+    const handleWindowResize = () => {
+      resizeTerminal();
+    };
+
+    window.addEventListener("resize", handleWindowResize);
+
+    const resizeObserver = new ResizeObserver(() => {
+      resizeTerminal();
+    });
 
     resizeObserver.observe(container);
-
-    // ------------------------------------------------
-    // FOCUS ON CLICK
-    // ------------------------------------------------
 
     const focusTerminal = () => {
       terminal.focus();
     };
 
-    container.addEventListener(
-      "click",
-      focusTerminal
-    );
-
-    // ------------------------------------------------
-    // RIGHT CLICK (VS Code jaisa)
-    // selection ho to copy, warna paste
-    // ------------------------------------------------
+    container.addEventListener("click", focusTerminal);
 
     const handleContextMenu = (e) => {
       e.preventDefault();
@@ -613,14 +417,7 @@ export default function Terminal({
       }
     };
 
-    container.addEventListener(
-      "contextmenu",
-      handleContextMenu
-    );
-
-    // ------------------------------------------------
-    // CTRL + MOUSE WHEEL ZOOM
-    // ------------------------------------------------
+    container.addEventListener("contextmenu", handleContextMenu);
 
     const handleWheel = (e) => {
       if (!(e.ctrlKey || e.metaKey)) return;
@@ -634,49 +431,18 @@ export default function Terminal({
       }
     };
 
-    container.addEventListener(
-      "wheel",
-      handleWheel,
-      { passive: false }
-    );
-
-    // ------------------------------------------------
-    // CLEANUP
-    // ------------------------------------------------
+    container.addEventListener("wheel", handleWheel, { passive: false });
 
     return () => {
-      window.removeEventListener(
-        "resize",
-        handleWindowResize
-      );
-
+      window.removeEventListener("resize", handleWindowResize);
       resizeObserver.disconnect();
-
-      container.removeEventListener(
-        "click",
-        focusTerminal
-      );
-
-      container.removeEventListener(
-        "contextmenu",
-        handleContextMenu
-      );
-
-      container.removeEventListener(
-        "wheel",
-        handleWheel
-      );
-
+      container.removeEventListener("click", focusTerminal);
+      container.removeEventListener("contextmenu", handleContextMenu);
+      container.removeEventListener("wheel", handleWheel);
       disposable.dispose();
-
-      callbackRef.current?.(
-        null
-      );
-
+      callbackRef.current?.(null);
       socket.disconnect();
-
       terminal.dispose();
-
       socketRef.current = null;
       terminalRef.current = null;
       fitAddonRef.current = null;
@@ -684,51 +450,28 @@ export default function Terminal({
     };
   }, [projectId, userId]);
 
-  // --------------------------------------------------
-  // CLEAR TERMINAL BUTTON
-  // --------------------------------------------------
-
   const clearTerminal = () => {
-    const terminal =
-      terminalRef.current;
-
-    if (!terminal) {
-      return;
-    }
+    const terminal = terminalRef.current;
+    if (!terminal) return;
 
     terminal.clear();
-
-    terminal.write(
-      "\x1b[2J\x1b[H"
-    );
-
+    terminal.write("\x1b[2J\x1b[H");
     terminal.focus();
   };
 
-  // --------------------------------------------------
-  // SEARCH HELPERS
-  // --------------------------------------------------
-
   const findNext = (text = searchText) => {
     if (!text) return;
-
-    searchAddonRef.current?.findNext(text, {
-      caseSensitive: false,
-    });
+    searchAddonRef.current?.findNext(text, { caseSensitive: false });
   };
 
   const findPrevious = (text = searchText) => {
     if (!text) return;
-
-    searchAddonRef.current?.findPrevious(text, {
-      caseSensitive: false,
-    });
+    searchAddonRef.current?.findPrevious(text, { caseSensitive: false });
   };
 
   const closeSearch = () => {
     setSearchOpen(false);
     setSearchText("");
-
     searchAddonRef.current?.clearDecorations?.();
     terminalRef.current?.clearSelection();
     terminalRef.current?.focus();
@@ -737,7 +480,6 @@ export default function Terminal({
   const handleSearchKeyDown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-
       if (e.shiftKey) {
         findPrevious();
       } else {
@@ -751,30 +493,17 @@ export default function Terminal({
     }
   };
 
-  // --------------------------------------------------
-  // UI
-  // --------------------------------------------------
-
   return (
-    <div className="relative flex h-full flex-col bg-[#0d0d0f]">
-      {/* -------------------------------------------- */}
-      {/* STATUS BAR */}
-      {/* -------------------------------------------- */}
-
-      <div className="flex h-7 shrink-0 items-center justify-between border-b border-white/[0.05] px-3">
+    <div className="relative flex h-full flex-col bg-black">
+      <div className="flex h-7 shrink-0 items-center justify-between border-b border-white/10 px-3">
         <div className="flex items-center gap-2">
           <span
             className={`h-1.5 w-1.5 rounded-full ${
-              connected
-                ? "bg-emerald-400"
-                : "bg-zinc-600"
+              connected ? "bg-brand-green" : "bg-white/20"
             }`}
           />
-
-          <span className="text-[11px] text-zinc-500">
-            {connected
-              ? "powershell — connected"
-              : "powershell — disconnected"}
+          <span className="text-[11px] text-white/50">
+            {connected ? "powershell — connected" : "powershell — disconnected"}
           </span>
         </div>
 
@@ -783,13 +512,13 @@ export default function Terminal({
             type="button"
             onClick={() => {
               setSearchOpen(true);
-
               setTimeout(() => {
                 searchInputRef.current?.focus();
+                searchInputRef.current?.select();
               }, 0);
             }}
             title="Find (Ctrl+F)"
-            className="rounded p-1 text-zinc-500 transition-colors hover:bg-white/10 hover:text-white"
+            className="rounded p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white"
           >
             <Search size={12} />
           </button>
@@ -798,19 +527,15 @@ export default function Terminal({
             type="button"
             onClick={clearTerminal}
             title="Clear terminal (Ctrl+K)"
-            className="rounded p-1 text-zinc-500 transition-colors hover:bg-white/10 hover:text-white"
+            className="rounded p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white"
           >
             <Eraser size={12} />
           </button>
         </div>
       </div>
 
-      {/* -------------------------------------------- */}
-      {/* SEARCH BOX */}
-      {/* -------------------------------------------- */}
-
       {searchOpen && (
-        <div className="absolute right-4 top-9 z-10 flex items-center gap-1 rounded border border-white/10 bg-[#1b1b1f] px-2 py-1 shadow-lg">
+        <div className="absolute right-4 top-9 z-10 flex items-center gap-1 rounded-xl border border-white/10 bg-black/95 px-2.5 py-1.5 shadow-2xl backdrop-blur-md">
           <input
             ref={searchInputRef}
             value={searchText}
@@ -820,14 +545,14 @@ export default function Terminal({
             }}
             onKeyDown={handleSearchKeyDown}
             placeholder="Find"
-            className="w-44 bg-transparent px-1 text-[12px] text-zinc-200 outline-none placeholder:text-zinc-600"
+            className="w-44 bg-transparent px-1 text-[12px] text-white outline-none placeholder:text-white/30"
           />
 
           <button
             type="button"
             onClick={() => findPrevious()}
             title="Previous (Shift+Enter)"
-            className="rounded p-1 text-zinc-400 hover:bg-white/10 hover:text-white"
+            className="rounded p-1 text-white/50 hover:bg-white/10 hover:text-white"
           >
             <ChevronUp size={13} />
           </button>
@@ -836,7 +561,7 @@ export default function Terminal({
             type="button"
             onClick={() => findNext()}
             title="Next (Enter)"
-            className="rounded p-1 text-zinc-400 hover:bg-white/10 hover:text-white"
+            className="rounded p-1 text-white/50 hover:bg-white/10 hover:text-white"
           >
             <ChevronDown size={13} />
           </button>
@@ -845,16 +570,12 @@ export default function Terminal({
             type="button"
             onClick={closeSearch}
             title="Close (Esc)"
-            className="rounded p-1 text-zinc-400 hover:bg-white/10 hover:text-white"
+            className="rounded p-1 text-white/50 hover:bg-white/10 hover:text-white"
           >
             <X size={13} />
           </button>
         </div>
       )}
-
-      {/* -------------------------------------------- */}
-      {/* XTERM CONTAINER */}
-      {/* -------------------------------------------- */}
 
       <div
         ref={containerRef}

@@ -9,16 +9,16 @@ import Editor from "../components/Editor";
 import Preview from "../components/Preview";
 import TopBar from "../components/TopBar";
 import ActivityBar from "../components/ActivityBar";
-import AiChat from "../components/AIChat";
+import AiChat from "../components/AiChat"
 import BottomPanel from "../components/BottomPanel";
 
 import { getTree } from "../features/file";
 import { getProjectById } from "../features/project";
 import { setCurrentProject } from "../redux/projectSlice";
 
-// Shared look for the small floating controls over the editor.
-const floating =
-  "border border-white/15 bg-black/90 shadow-lg shadow-black/40 backdrop-blur";
+const DEFAULT_CHAT_WIDTH = 340;
+const MIN_CHAT_WIDTH = 280;
+const MAX_CHAT_WIDTH = 640;
 
 export default function ProjectPage() {
   const { id } = useParams();
@@ -38,9 +38,16 @@ export default function ProjectPage() {
   const [showAIChat, setShowAIChat] = useState(true);
   const [showBottomPanel, setShowBottomPanel] = useState(true);
   const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
+  const [chatWidth, setChatWidth] = useState(DEFAULT_CHAT_WIDTH);
+  const [resizingChat, setResizingChat] = useState(false);
 
-  // Below `md` there is room for one pane only; this picks which one.
-  // Desktop ignores it and shows Explorer / Editor / AiChat side by side.
+  // CHANGED: new state — ONLY used below the `md` breakpoint. Desktop still
+  // shows Explorer / Editor / AiChat side by side exactly as before, driven
+  // by showExplorer/showAIChat like always. On mobile there isn't room for
+  // three columns, so this decides which single pane is visible. Nothing
+  // about Explorer/AiChat/Editor's own markup changes — we just toggle
+  // `hidden`/`flex` on the wrapper around each, which is layout-safe because
+  // it doesn't touch position, z-index, or those components' own CSS.
   const [mobilePane, setMobilePane] = useState("editor"); // "explorer" | "editor" | "chat"
 
   // Escape key exits preview fullscreen
@@ -54,13 +61,6 @@ export default function ProjectPage() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [isPreviewFullscreen]);
-
-  // Browser tab title goes back to plain "nextCode" when leaving the page
-  useEffect(() => {
-    return () => {
-      document.title = "nextCode";
-    };
-  }, []);
 
   // =================================================
   // LOAD PROJECT
@@ -84,10 +84,7 @@ export default function ProjectPage() {
     try {
       await loadTree();
       const data = await getProjectById(id);
-      if (data?.project) {
-        dispatch(setCurrentProject(data.project));
-        document.title = `${data.project.name} - nextCode`;
-      }
+      if (data?.project) dispatch(setCurrentProject(data.project));
     } catch (error) {
       console.error("Project loading error:", error);
     }
@@ -102,7 +99,10 @@ export default function ProjectPage() {
     setActiveTab(file);
     setShowPreview(false);
 
-    // On mobile, jump back to the editor so the opened file is what you see.
+    // CHANGED: on mobile, opening a file switches the single visible pane
+    // back to "editor" so the user actually sees what they just opened,
+    // instead of still looking at the file tree. No effect on desktop —
+    // mobilePane is ignored there.
     setMobilePane("editor");
   };
 
@@ -118,11 +118,36 @@ export default function ProjectPage() {
 
   const handleTerminalSocket = (socketId) => setTerminalSocketId(socketId);
 
+  const clampChatWidth = (value) =>
+    Math.max(MIN_CHAT_WIDTH, Math.min(value, MAX_CHAT_WIDTH, window.innerWidth * 0.6));
+
+  const startChatResize = (e) => {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setResizingChat(true);
+  };
+
+  const moveChatResize = (e) => {
+    if (!resizingChat) return;
+    setChatWidth(clampChatWidth(window.innerWidth - e.clientX));
+  };
+
+  const endChatResize = (e) => {
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    setResizingChat(false);
+  };
+
   // =================================================
   // RENDER
   // =================================================
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden bg-black text-white">
+    <div className="relative flex h-screen flex-col overflow-hidden bg-[#0a0a0c]">
+      {/* BACKGROUND GLOW */}
+      {/* CHANGED: hidden on mobile — purely decorative, costs paint for no
+          real benefit on a small screen. No layout impact either way. */}
+      <div className="pointer-events-none absolute -top-40 left-1/3 hidden h-96 w-96 rounded-full bg-sky-500/10 blur-[140px] md:block" />
+      <div className="pointer-events-none absolute -top-20 right-1/4 hidden h-80 w-80 rounded-full bg-violet-500/10 blur-[140px] md:block" />
+
       {/* TOP BAR */}
       <TopBar
         showBottomPanel={showBottomPanel}
@@ -133,7 +158,11 @@ export default function ProjectPage() {
 
       {/* MAIN */}
       <div className="flex flex-1 overflow-hidden">
-        {/* ACTIVITY BAR (desktop only; mobile uses the bottom tab bar) */}
+        {/* ACTIVITY BAR */}
+        {/* CHANGED: hidden below md. Its job (toggling Explorer/AiChat/
+            Terminal) is replaced on mobile by the bottom tab bar added at
+            the end of this file, which is easier to reach with a thumb than
+            a narrow icon rail on the far left. */}
         <div className="hidden md:block">
           <ActivityBar
             showExplorer={showExplorer}
@@ -146,6 +175,11 @@ export default function ProjectPage() {
         </div>
 
         {/* EXPLORER */}
+        {/* CHANGED: wrapped in a plain flow div (no position/z-index games)
+            that toggles `hidden`/`flex` based on mobilePane below `md`, and
+            is always `flex` from `md` up — i.e. desktop behaviour is
+            byte-for-byte what it was before. Explorer's own internal
+            classes are completely untouched. */}
         <div className={`${mobilePane === "explorer" ? "flex" : "hidden"} w-full md:flex md:w-auto`}>
           <AnimatePresence initial={false}>
             {showExplorer && (
@@ -167,12 +201,20 @@ export default function ProjectPage() {
         </div>
 
         {/* CENTER: EDITOR / PREVIEW + TERMINAL */}
+        {/* CHANGED: same `hidden`/`flex` toggle keyed off mobilePane === "editor".
+            `min-w-0 flex-1` (already present) is exactly what lets this
+            column claim full width on mobile once Explorer/AiChat are
+            hidden — no extra width hacks needed. */}
         <div
           className={`${
             mobilePane === "editor" ? "flex" : "hidden"
-          } relative w-full min-w-0 flex-1 flex-col overflow-hidden border-x border-white/10 md:flex`}
+          } relative w-full min-w-0 flex-1 flex-col overflow-hidden border-x border-white/[0.05] md:flex`}
         >
-          {/* EDITOR / PREVIEW SWITCH (labels collapse to icons below `sm`) */}
+          {/* EDITOR / PREVIEW SWITCH */}
+          {/* CHANGED: responsive position/padding/icon-size only — nothing
+              here reaches into another component. Label text collapses to
+              icon-only below `sm` so the pill can't overflow on a narrow
+              phone. */}
           <div className="pointer-events-none absolute right-2 top-2 z-40 flex items-center gap-1.5 sm:right-4 sm:top-3 sm:gap-2">
             {showPreview && (
               <motion.button
@@ -182,30 +224,27 @@ export default function ProjectPage() {
                 type="button"
                 onClick={() => setIsPreviewFullscreen((v) => !v)}
                 title={isPreviewFullscreen ? "Exit fullscreen" : "Fullscreen preview"}
-                aria-label={isPreviewFullscreen ? "Exit fullscreen" : "Fullscreen preview"}
-                className={`pointer-events-auto flex items-center justify-center rounded-lg p-1.5 text-white/60 hover:text-white sm:p-2 ${floating}`}
+                className="pointer-events-auto flex items-center justify-center rounded-lg border border-white/10 bg-[#111113]/95 p-1.5 text-zinc-400 shadow-lg shadow-black/40 backdrop-blur hover:text-white sm:p-2"
               >
                 {isPreviewFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
               </motion.button>
             )}
 
-            <div className={`pointer-events-auto flex items-center gap-0.5 rounded-lg p-1 ${floating}`}>
+            <div className="pointer-events-auto flex items-center gap-0.5 rounded-lg border border-white/10 bg-[#111113]/95 p-1 shadow-lg shadow-black/40 backdrop-blur">
               <button
                 type="button"
-                aria-label="Editor"
-                aria-pressed={!showPreview}
                 onClick={() => {
                   setShowPreview(false);
                   setIsPreviewFullscreen(false);
                 }}
                 className={`relative flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors sm:px-3 sm:py-1.5 sm:text-xs ${
-                  !showPreview ? "text-night" : "text-white/50 hover:text-white"
+                  !showPreview ? "text-white" : "text-zinc-500 hover:text-zinc-300"
                 }`}
               >
                 {!showPreview && (
                   <motion.div
                     layoutId="editor-preview-pill"
-                    className="absolute inset-0 rounded-md bg-brand-lime"
+                    className="absolute inset-0 rounded-md bg-gradient-to-b from-zinc-700 to-zinc-800"
                     transition={{ type: "spring", duration: 0.4, bounce: 0.15 }}
                   />
                 )}
@@ -215,17 +254,15 @@ export default function ProjectPage() {
 
               <button
                 type="button"
-                aria-label="Preview"
-                aria-pressed={showPreview}
                 onClick={() => setShowPreview(true)}
                 className={`relative flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors sm:px-3 sm:py-1.5 sm:text-xs ${
-                  showPreview ? "text-night" : "text-white/50 hover:text-white"
+                  showPreview ? "text-white" : "text-zinc-500 hover:text-zinc-300"
                 }`}
               >
                 {showPreview && (
                   <motion.div
                     layoutId="editor-preview-pill"
-                    className="absolute inset-0 rounded-md bg-brand-lime"
+                    className="absolute inset-0 rounded-md bg-gradient-to-b from-zinc-700 to-zinc-800"
                     transition={{ type: "spring", duration: 0.4, bounce: 0.15 }}
                   />
                 )}
@@ -263,17 +300,23 @@ export default function ProjectPage() {
                 <button
                   onClick={() => setIsPreviewFullscreen(false)}
                   title="Exit fullscreen (Esc)"
-                  aria-label="Exit fullscreen"
-                  className={`absolute right-2 top-2 z-[110] flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-white/80 hover:text-white sm:right-4 sm:top-3 sm:px-3 sm:text-xs ${floating}`}
+                  className="absolute right-2 top-2 z-[110] flex items-center gap-1.5 rounded-lg border border-white/10 bg-[#111113]/95 px-2.5 py-1.5 text-[11px] font-medium text-zinc-300 shadow-lg shadow-black/40 backdrop-blur hover:text-white sm:right-4 sm:top-3 sm:px-3 sm:text-xs"
                 >
                   <Minimize2 size={13} />
-                  <span className="hidden sm:inline">Exit Fullscreen</span>
+                  <span className="hidden xs:inline">Exit Fullscreen</span>
                 </button>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* BOTTOM PANEL (TERMINAL) — capped to 45% of the screen height on mobile */}
+          {/* BOTTOM PANEL (TERMINAL) */}
+          {/* CHANGED: capped to 45% viewport height on mobile only
+              (`md:max-h-none` restores full original behaviour from md up)
+              so the terminal can't push the editor down to almost nothing
+              on a short phone screen. This only constrains height — it
+              doesn't touch BottomPanel's own markup or add any position
+              rules, so its internals aren't affected beyond having less
+              room. */}
           <AnimatePresence initial={false}>
             {showBottomPanel && (
               <div className="max-h-[45vh] md:max-h-none">
@@ -296,7 +339,7 @@ export default function ProjectPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 12 }}
                 onClick={() => setShowBottomPanel(true)}
-                className={`absolute bottom-3 left-3 z-30 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white/80 hover:text-white ${floating}`}
+                className="absolute bottom-3 left-3 z-30 flex items-center gap-1.5 rounded-lg border border-white/10 bg-[#111113]/95 px-3 py-1.5 text-xs font-medium text-zinc-300 shadow-lg shadow-black/40 backdrop-blur hover:text-white"
               >
                 Show Terminal
               </motion.button>
@@ -305,7 +348,30 @@ export default function ProjectPage() {
         </div>
 
         {/* AI CHAT */}
-        <div className={`${mobilePane === "chat" ? "flex" : "hidden"} w-full md:flex md:w-auto`}>
+        {/* CHANGED: same `hidden`/`flex` toggle as Explorer, keyed off
+            mobilePane === "chat". AiChat's own markup/classes untouched. */}
+        <div
+          style={{ "--chat-w": `${chatWidth}px` }}
+          className={`${mobilePane === "chat" ? "flex" : "hidden"} relative w-full md:flex md:shrink-0 ${
+            showAIChat ? "md:w-[var(--chat-w)]" : "md:w-auto"
+          } ${resizingChat ? "select-none" : ""}`}
+        >
+          {showAIChat && (
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              title="Drag to resize, double-click to reset"
+              onPointerDown={startChatResize}
+              onPointerMove={moveChatResize}
+              onPointerUp={endChatResize}
+              onPointerCancel={endChatResize}
+              onDoubleClick={() => setChatWidth(DEFAULT_CHAT_WIDTH)}
+              className={`absolute left-0 top-0 z-20 hidden h-full w-1.5 -translate-x-1/2 cursor-col-resize touch-none transition-colors md:block ${
+                resizingChat ? "bg-brand-lime" : "bg-transparent hover:bg-brand-lime/60"
+              }`}
+            />
+          )}
+
           <AnimatePresence initial={false}>
             {showAIChat && (
               <AiChat
@@ -319,12 +385,17 @@ export default function ProjectPage() {
         </div>
       </div>
 
-      {/* MOBILE BOTTOM TAB BAR (below `md` only) */}
-      <div className="flex items-center justify-around border-t border-white/10 bg-black py-2 md:hidden">
+      {/* MOBILE BOTTOM TAB BAR */}
+      {/* CHANGED: brand-new block, only rendered below `md`. Replaces the
+          ActivityBar as the way to switch between Files / Code / AI Chat on
+          a phone, since only one of those three panes can be on screen at a
+          time down there. Purely additive — doesn't reuse or modify any
+          existing component. */}
+      <div className="flex items-center justify-around border-t border-white/[0.06] bg-[#0f0f12] py-2 md:hidden">
         <button
           onClick={() => setMobilePane("explorer")}
           className={`flex flex-col items-center gap-1 px-4 py-1 text-[11px] font-medium transition-colors ${
-            mobilePane === "explorer" ? "text-brand-lime" : "text-white/50"
+            mobilePane === "explorer" ? "text-white" : "text-zinc-500"
           }`}
         >
           <Files size={18} />
@@ -334,7 +405,7 @@ export default function ProjectPage() {
         <button
           onClick={() => setMobilePane("editor")}
           className={`flex flex-col items-center gap-1 px-4 py-1 text-[11px] font-medium transition-colors ${
-            mobilePane === "editor" ? "text-brand-lime" : "text-white/50"
+            mobilePane === "editor" ? "text-white" : "text-zinc-500"
           }`}
         >
           <Code2 size={18} />
@@ -344,7 +415,7 @@ export default function ProjectPage() {
         <button
           onClick={() => setMobilePane("chat")}
           className={`flex flex-col items-center gap-1 px-4 py-1 text-[11px] font-medium transition-colors ${
-            mobilePane === "chat" ? "text-brand-lime" : "text-white/50"
+            mobilePane === "chat" ? "text-white" : "text-zinc-500"
           }`}
         >
           <Bot size={18} />
@@ -354,7 +425,7 @@ export default function ProjectPage() {
         <button
           onClick={() => setShowBottomPanel((v) => !v)}
           className={`flex flex-col items-center gap-1 px-4 py-1 text-[11px] font-medium transition-colors ${
-            showBottomPanel ? "text-brand-lime" : "text-white/50"
+            showBottomPanel ? "text-white" : "text-zinc-500"
           }`}
         >
           <TerminalSquare size={18} />

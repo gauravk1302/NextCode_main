@@ -29,8 +29,8 @@ export default function Preview({ tree = [] }) {
         <html>
           <body style="
             margin:0;
-            background:#0a0a0c;
-            color:#999;
+            background:#000000;
+            color:rgba(255,255,255,0.7);
             font-family:Arial,sans-serif;
             display:flex;
             align-items:center;
@@ -38,8 +38,8 @@ export default function Preview({ tree = [] }) {
             height:100vh;
           ">
             <div style="text-align:center;">
-              <h3 style="margin:0 0 6px;">No index.html found</h3>
-              <p style="margin:0;font-size:13px;color:#666;">Create an HTML project to see the preview.</p>
+              <h3 style="margin:0 0 6px;color:#ffffff;font-size:15px;font-weight:600;">No index.html found</h3>
+              <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.4);">Create an HTML project to see the preview.</p>
             </div>
           </body>
         </html>
@@ -62,23 +62,21 @@ export default function Preview({ tree = [] }) {
 
   return (
     <div className="flex h-full w-full flex-col bg-white">
-      {/* PREVIEW HEADER */}
-      <div className="flex h-10 shrink-0 items-center justify-between bg-[#111113] px-4">
+      <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/10 bg-black px-4">
         <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-emerald-400" />
-          <span className="text-xs text-zinc-300">Preview</span>
+          <div className="h-2 w-2 rounded-full bg-brand-green" />
+          <span className="text-xs font-semibold text-white/80">Preview</span>
         </div>
 
         <button
           onClick={() => setRefreshKey((k) => k + 1)}
           title="Refresh"
-          className="flex items-center gap-1.5 rounded-md p-1.5 text-zinc-400 hover:bg-white/10 hover:text-white"
+          className="flex items-center gap-1.5 rounded-lg p-1.5 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
         >
           <RefreshCw size={13} />
         </button>
       </div>
 
-      {/* IFRAME */}
       <div className="min-h-0 flex-1 bg-white">
         <iframe
           key={refreshKey}

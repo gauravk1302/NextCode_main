@@ -1,7 +1,29 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { SquareTerminal, Eye, Code2, Lock, Globe } from "lucide-react";
+import { SquareTerminal, Eye, Code2 } from "lucide-react";
+
+function ToggleButton({ active, onClick, label, activeClass, children }) {
+  return (
+    <motion.button
+      type="button"
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.94 }}
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      aria-pressed={active}
+      className={`flex h-9 w-9 items-center justify-center rounded-full border transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white motion-reduce:transition-none sm:h-8 sm:w-8 ${
+        active
+          ? `border-transparent text-night ${activeClass}`
+          : "border-white/15 text-white/60 hover:border-white/30 hover:text-white"
+      }`}
+    >
+      {children}
+    </motion.button>
+  );
+}
 
 export default function TopBar({
   showBottomPanel,
@@ -9,156 +31,167 @@ export default function TopBar({
   showPreview,
   setShowPreview,
 }) {
-  const [profileOpen, setProfileOpen] = useState(false);
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  // Adjust these slice names/paths to match your store shape
   const { currentProject, loading } = useSelector((state) => state.project || {});
   const { userData } = useSelector((state) => state.user || {});
 
   const projectName = currentProject?.name || "Untitled Project";
-  const projectIcon = currentProject?.icon || "📁";
-  const projectColor = currentProject?.color || "#3B82F6";
-  const isPrivate = currentProject?.visibility === "private";
+  const visibility = currentProject?.visibility;
 
   const userName = userData?.name || "Guest";
   const userEmail = userData?.email || "";
   const userAvatar = userData?.avatar;
   const initials = userName
     .split(" ")
-    .map((w) => w[0])
+    .map((word) => word[0])
     .slice(0, 2)
     .join("")
     .toUpperCase();
 
-  return (
-    <div className="relative flex h-12 items-center justify-between border-b border-white/[0.06] bg-[#111113]/90 px-4 backdrop-blur-xl">
-      {/* LEFT: LOGO + PROJECT */}
-      <div className="flex items-center gap-3">
-        <div className="text-white bg-clip-text text-lg font-bold text-transparent">
-          Vertex AI
-        </div>
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
 
-        <div className="h-4 w-px bg-white/10" />
+  const goTo = (path) => {
+    setMenuOpen(false);
+    navigate(path);
+  };
+
+  return (
+    <header className="flex h-12 w-full shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-black px-3 sm:px-4">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+          className="shrink-0 font-display text-[22px] uppercase leading-none tracking-wide text-white transition-colors hover:text-brand-lime focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white motion-reduce:transition-none"
+        >
+          nextCode
+        </button>
+
+        <span className="shrink-0 text-[18px] font-light text-white/25">/</span>
 
         {loading ? (
-          <div className="h-5 w-32 animate-pulse rounded-md bg-white/[0.06]" />
+          <div className="h-5 w-28 animate-pulse rounded-full bg-white/10" />
         ) : (
-          <div className="flex items-center gap-2">
-            <div
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[13px]"
-              style={{
-                backgroundColor: `${projectColor}22`,
-                border: `1px solid ${projectColor}55`,
-              }}
-            >
-              {projectIcon}
-            </div>
-
-            <span className="max-w-[220px] truncate text-sm font-medium text-zinc-300">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="truncate text-[14px] font-semibold text-white/85">
               {projectName}
             </span>
 
-            <span title={isPrivate ? "Private" : "Public"} className="text-zinc-600">
-              {isPrivate ? <Lock size={12} /> : <Globe size={12} />}
-            </span>
+            {visibility && (
+              <span className="hidden shrink-0 rounded-full border border-white/15 px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-white/50 sm:inline">
+                {visibility}
+              </span>
+            )}
           </div>
         )}
       </div>
 
-      {/* RIGHT: TOGGLES + PROFILE */}
-      <div className="flex items-center gap-1.5">
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+      <div className="flex shrink-0 items-center gap-2">
+        <ToggleButton
+          active={showPreview}
           onClick={() => setShowPreview?.((v) => !v)}
-          title={showPreview ? "Show Editor" : "Show Preview"}
-          className={`relative flex items-center justify-center rounded-lg p-2 transition-colors ${
-            showPreview ? "text-sky-400" : "text-zinc-400 hover:text-zinc-200"
-          }`}
+          label={showPreview ? "Show editor" : "Show preview"}
+          activeClass="bg-brand-lime"
         >
-          {showPreview && (
-            <motion.div
-              layoutId="topbar-toggle-pill"
-              className="absolute inset-0 rounded-lg bg-white/[0.06]"
-              transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
-            />
-          )}
-          {showPreview ? <Eye size={16} className="relative" /> : <Code2 size={16} className="relative" />}
-        </motion.button>
+          {showPreview ? <Eye size={16} /> : <Code2 size={16} />}
+        </ToggleButton>
 
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+        <ToggleButton
+          active={showBottomPanel}
           onClick={() => setShowBottomPanel?.((v) => !v)}
-          title={showBottomPanel ? "Hide Terminal" : "Show Terminal"}
-          className={`relative flex items-center justify-center rounded-lg p-2 transition-colors ${
-            showBottomPanel ? "text-emerald-400" : "text-zinc-400 hover:text-zinc-200"
-          }`}
+          label={showBottomPanel ? "Hide terminal" : "Show terminal"}
+          activeClass="bg-brand-green"
         >
-          {showBottomPanel && (
-            <motion.div
-              layoutId="topbar-toggle-pill-2"
-              className="absolute inset-0 rounded-lg bg-white/[0.06]"
-              transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
-            />
-          )}
-          <SquareTerminal size={16} className="relative" />
-        </motion.button>
+          <SquareTerminal size={16} />
+        </ToggleButton>
 
         <div className="mx-1 h-5 w-px bg-white/10" />
 
-        {/* PROFILE */}
         <div className="relative">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setProfileOpen((v) => !v)}
-            className="flex items-center gap-2 rounded-lg py-1 pl-1 pr-2 transition-colors hover:bg-white/[0.05]"
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="Account menu"
+            aria-expanded={menuOpen}
+            className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white motion-reduce:transition-none"
           >
             {userAvatar ? (
               <img
                 src={userAvatar}
                 alt={userName}
                 referrerPolicy="no-referrer"
-                className="h-7 w-7 rounded-full border border-white/10 object-cover"
+                className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-violet-400 text-[11px] font-semibold text-white">
+              <span className="flex h-full w-full items-center justify-center bg-brand-orange text-[12px] font-bold text-night">
                 {initials}
-              </div>
+              </span>
             )}
-          </motion.button>
+          </button>
 
           <AnimatePresence>
-            {profileOpen && (
+            {menuOpen && (
               <>
-                <div className="fixed inset-0 z-100" onClick={() => setProfileOpen(false)} />
+                <div
+                  className="fixed inset-0 z-[100]"
+                  onClick={() => setMenuOpen(false)}
+                />
 
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.96, y: -6 }}
+                  initial={{ opacity: 0, scale: 0.97, y: -6 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.96, y: -6 }}
+                  exit={{ opacity: 0, scale: 0.97, y: -6 }}
                   transition={{ duration: 0.14, ease: "easeOut" }}
-                  className="absolute right-0 top-11 z-100 w-64 rounded-xl border border-white/[0.08] bg-[#17171a]/95 p-3 shadow-2xl shadow-black/50 backdrop-blur-xl"
+                  className="absolute right-0 top-11 z-[101] w-[min(16rem,calc(100vw-1.5rem))] rounded-2xl border border-white/10 bg-black p-2 shadow-2xl shadow-black"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 rounded-xl bg-white/[0.04] p-2.5">
                     {userAvatar ? (
                       <img
                         src={userAvatar}
                         alt={userName}
                         referrerPolicy="no-referrer"
-                        className="h-10 w-10 rounded-full border border-white/10 object-cover"
+                        className="h-10 w-10 shrink-0 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-violet-400 text-sm font-semibold text-white">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-orange text-[13px] font-bold text-night">
                         {initials}
-                      </div>
+                      </span>
                     )}
 
                     <div className="min-w-0">
-                      <p className="truncate text-[13px] font-medium text-white">{userName}</p>
-                      <p className="truncate text-[11.5px] text-zinc-500">{userEmail}</p>
+                      <p className="truncate text-[13px] font-semibold text-white">
+                        {userName}
+                      </p>
+                      <p className="truncate text-[12px] text-white/50">
+                        {userEmail}
+                      </p>
                     </div>
+                  </div>
+
+                  <div className="mt-1.5 flex flex-col">
+                    <button
+                      type="button"
+                      onClick={() => goTo("/")}
+                      className="rounded-lg px-3 py-2 text-left text-[13px] font-medium text-white/75 transition-colors hover:bg-white/[0.06] hover:text-white"
+                    >
+                      Dashboard
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => goTo("/plans")}
+                      className="rounded-lg px-3 py-2 text-left text-[13px] font-medium text-white/75 transition-colors hover:bg-white/[0.06] hover:text-white"
+                    >
+                      Plans
+                    </button>
                   </div>
                 </motion.div>
               </>
@@ -166,6 +199,6 @@ export default function TopBar({
           </AnimatePresence>
         </div>
       </div>
-    </div>
+    </header>
   );
 }

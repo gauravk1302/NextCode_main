@@ -2,16 +2,14 @@ import { useState } from "react";
 import { Star, Trash2, ArrowUpRight } from "lucide-react";
 import { timeAgo } from "../utils/TimeAgo";
 
-// Full class strings so Tailwind can see them.
 const TONES = {
   orange: "bg-brand-orange",
   lavender: "bg-brand-lavender",
   coral: "bg-brand-coral",
   green: "bg-brand-green",
+  lime: "bg-brand-lime",
 };
 
-// The parent (Dashboard) owns the API calls and the Redux updates.
-// The card only awaits them so it can show its own loading state.
 export function ProjectCard({
   project,
   accent = "orange",
@@ -49,8 +47,6 @@ export function ProjectCard({
   };
 
   return (
-    // Whole card opens the project on click. The title is a real <button>
-    // (no handler of its own) so keyboard Enter also bubbles up to this onClick.
     <div
       onClick={() => onOpen?.(project)}
       className={`cut group relative flex min-h-[176px] cursor-pointer flex-col rounded-2xl p-4 text-night transition-transform duration-200 hover:-translate-y-0.5 motion-reduce:transition-none ${

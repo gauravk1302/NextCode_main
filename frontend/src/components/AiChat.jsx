@@ -20,9 +20,6 @@ import {
 
 import { chatWithAI } from "../features/ai";
 
-// =================================================
-// CODE BLOCK (with copy button + syntax highlight)
-// =================================================
 function CodeBlock({ language, code }) {
   const [copied, setCopied] = useState(false);
 
@@ -34,14 +31,15 @@ function CodeBlock({ language, code }) {
 
   return (
     <div className="my-2 overflow-hidden rounded-lg border border-white/10 bg-black">
-      <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.04] px-3 py-1.5">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+      <div className="flex items-center justify-between border-b border-white/10 px-3 py-1.5">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-white/40">
           {language || "text"}
         </span>
 
         <button
+          type="button"
           onClick={handleCopy}
-          className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-zinc-500 transition-colors hover:bg-white/10 hover:text-zinc-200"
+          className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-white/50 transition-colors hover:bg-white/10 hover:text-white"
         >
           {copied ? (
             <>
@@ -74,9 +72,6 @@ function CodeBlock({ language, code }) {
   );
 }
 
-// =================================================
-// MARKDOWN RENDERER (message content)
-// =================================================
 function Markdown({ content }) {
   return (
     <ReactMarkdown
@@ -88,13 +83,13 @@ function Markdown({ content }) {
         strong: ({ children }) => (
           <strong className="font-semibold text-white">{children}</strong>
         ),
-        em: ({ children }) => <em className="italic text-zinc-300">{children}</em>,
+        em: ({ children }) => <em className="italic">{children}</em>,
         a: ({ children, href }) => (
           <a
             href={href}
             target="_blank"
             rel="noreferrer"
-            className="text-brand-lavender underline underline-offset-2 hover:text-white"
+            className="text-brand-lavender underline underline-offset-2 hover:text-brand-lime"
           >
             {children}
           </a>
@@ -107,39 +102,41 @@ function Markdown({ content }) {
         ),
         li: ({ children }) => <li className="leading-relaxed">{children}</li>,
         h1: ({ children }) => (
-          <h1 className="mb-2 mt-3 text-[16px] font-semibold text-white first:mt-0">{children}</h1>
+          <h1 className="mb-2 mt-3 text-[15px] font-bold text-white">{children}</h1>
         ),
         h2: ({ children }) => (
-          <h2 className="mb-2 mt-3 text-[15px] font-semibold text-white first:mt-0">{children}</h2>
+          <h2 className="mb-2 mt-3 text-[14px] font-bold text-white">{children}</h2>
         ),
         h3: ({ children }) => (
-          <h3 className="mb-1.5 mt-2.5 text-[13.5px] font-semibold text-white first:mt-0">{children}</h3>
+          <h3 className="mb-1.5 mt-2 text-[13px] font-semibold text-white">{children}</h3>
         ),
         blockquote: ({ children }) => (
-          <blockquote className="mb-2 border-l-2 border-brand-lavender/50 pl-3 italic text-zinc-400 last:mb-0">
+          <blockquote className="my-2 border-l-2 border-brand-lavender/60 pl-3 text-white/60">
             {children}
           </blockquote>
         ),
         hr: () => <hr className="my-3 border-white/10" />,
         table: ({ children }) => (
-          <div className="mb-2 overflow-x-auto rounded-lg border border-white/10">
-            <table className="w-full border-collapse text-[12.5px]">{children}</table>
+          <div className="my-2 overflow-x-auto">
+            <table className="w-full border-collapse text-[12px]">{children}</table>
           </div>
         ),
-        thead: ({ children }) => <thead className="bg-white/[0.04]">{children}</thead>,
+        thead: ({ children }) => <thead className="bg-white/[0.05]">{children}</thead>,
         th: ({ children }) => (
-          <th className="border-b border-white/10 px-2.5 py-1.5 text-left font-semibold text-zinc-300">
+          <th className="border border-white/10 px-2 py-1 text-left font-semibold text-white">
             {children}
           </th>
         ),
         td: ({ children }) => (
-          <td className="border-b border-white/[0.06] px-2.5 py-1.5 text-zinc-400">{children}</td>
+          <td className="border border-white/10 px-2 py-1">{children}</td>
         ),
-        code({ inline, className, children }) {
+        pre: ({ children }) => <>{children}</>,
+        code({ className, children }) {
           const match = /language-(\w+)/.exec(className || "");
           const code = String(children).replace(/\n$/, "");
+          const isBlock = Boolean(match) || code.includes("\n");
 
-          if (inline) {
+          if (!isBlock) {
             return (
               <code className="rounded bg-white/10 px-1.5 py-0.5 text-[12.5px] text-brand-lime">
                 {code}
@@ -156,14 +153,11 @@ function Markdown({ content }) {
   );
 }
 
-// =================================================
-// TOOL ACTION BADGE (folder/file/command events)
-// =================================================
 const TOOL_META = {
   folder_created: { icon: FolderPlus, color: "text-brand-lavender", label: "Created folder" },
   file_created: { icon: FilePlus2, color: "text-brand-green", label: "Created file" },
   file_updated: { icon: FilePen, color: "text-brand-orange", label: "Updated file" },
-  command_result: { icon: TerminalSquare, color: "text-brand-coral", label: "Ran command" },
+  command_result: { icon: TerminalSquare, color: "text-brand-lime", label: "Ran command" },
 };
 
 function ToolBadge({ toolType, detail }) {
@@ -178,10 +172,10 @@ function ToolBadge({ toolType, detail }) {
       animate={{ opacity: 1, y: 0 }}
       className="flex items-center justify-center"
     >
-      <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11.5px] text-zinc-400">
-        <Icon size={12} className={meta.color} />
-        <span>{meta.label}</span>
-        {detail && <span className="text-zinc-600">&middot; {detail}</span>}
+      <div className="flex max-w-full items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-white/60">
+        <Icon size={12} className={`shrink-0 ${meta.color}`} />
+        <span className="shrink-0">{meta.label}</span>
+        {detail && <span className="truncate text-white/40">&middot; {detail}</span>}
       </div>
     </motion.div>
   );
@@ -195,16 +189,10 @@ export default function AIChat({ projectId, terminalSocketId, onFilesChanged }) 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
-  // =================================================
-  // AUTO SCROLL
-  // =================================================
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // =================================================
-  // AUTO-GROW TEXTAREA
-  // =================================================
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -216,9 +204,6 @@ export default function AIChat({ projectId, terminalSocketId, onFilesChanged }) 
     setMessages((prev) => [...prev, { role: "tool", toolType, detail }]);
   };
 
-  // =================================================
-  // SEND
-  // =================================================
   const handleSend = async () => {
     const message = input.trim();
     if (!message || loading) return;
@@ -301,38 +286,41 @@ export default function AIChat({ projectId, terminalSocketId, onFilesChanged }) 
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSend();
     }
   };
 
-  // =================================================
-  // UI
-  // =================================================
+  const canSend = !loading && input.trim().length > 0;
+
   return (
-    <div className="flex w-80 shrink-0 flex-col border-l border-white/10 bg-black">
-      {/* HEADER */}
-      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-white/10 px-3">
-        <span className="text-xs font-semibold tracking-wider text-white">NextCode AI</span>
+    <div className="flex h-full w-full flex-col bg-black">
+      <div className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-2.5">
+        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-orange text-night">
+          <Sparkles size={13} strokeWidth={2.5} />
+        </span>
+
+        <span className="text-xs font-semibold tracking-wider text-white/80">
+          NextCode AI
+        </span>
 
         {loading && (
-          <span className="ml-auto flex items-center gap-1.5 text-[10.5px] text-zinc-500">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-lime" />
+          <span className="ml-auto flex items-center gap-1.5 text-[10.5px] text-white/50">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-green" />
             working
           </span>
         )}
       </div>
 
-      {/* MESSAGES */}
       <div className="flex-1 space-y-3 overflow-y-auto p-3">
         {messages.length === 0 && (
           <div className="mt-10 text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
-              <Sparkles size={22} className="text-brand-lavender" />
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-lavender text-night">
+              <Sparkles size={22} />
             </div>
-            <p className="text-sm font-medium text-zinc-300">What do you want to build?</p>
-            <p className="mt-1.5 text-xs text-zinc-500">Ask me to create or modify files.</p>
+            <p className="text-sm font-semibold text-white/80">What do you want to build?</p>
+            <p className="mt-1.5 text-xs text-white/40">Ask me to create or modify files.</p>
           </div>
         )}
 
@@ -354,29 +342,27 @@ export default function AIChat({ projectId, terminalSocketId, onFilesChanged }) 
                 transition={{ duration: 0.15 }}
                 className={`flex items-start gap-2 ${isUser ? "flex-row-reverse" : ""}`}
               >
-                {/* AVATAR */}
                 <div
                   className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                    isUser
-                      ? "bg-white/10 text-zinc-300"
-                      : "bg-brand-orange text-night"
+                    isUser ? "bg-white/10 text-white/70" : "bg-brand-orange text-night"
                   }`}
                 >
                   {isUser ? <User size={12} /> : <Bot size={12} />}
                 </div>
 
-                {/* BUBBLE */}
                 <div
-                  className={`max-w-[85%] rounded-xl px-3 py-2 text-[13px] ${
+                  className={`min-w-0 max-w-[85%] rounded-xl px-3 py-2 text-[13px] ${
                     isUser
                       ? "bg-brand-lavender text-night"
                       : message.error
                       ? "border border-brand-coral/30 bg-brand-coral/10 text-brand-coral"
-                      : "border border-white/10 bg-white/[0.04] text-zinc-300"
+                      : "border border-white/10 bg-white/[0.04] text-white/75"
                   }`}
                 >
                   {isUser ? (
-                    <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                    <p className="whitespace-pre-wrap break-words font-medium leading-relaxed">
+                      {message.content}
+                    </p>
                   ) : (
                     <Markdown content={message.content || ""} />
                   )}
@@ -387,7 +373,7 @@ export default function AIChat({ projectId, terminalSocketId, onFilesChanged }) 
         </AnimatePresence>
 
         {loading && (
-          <div className="flex items-center gap-2 pl-8 text-xs text-zinc-500">
+          <div className="flex items-center gap-2 pl-8 text-xs text-white/50">
             <Loader2 size={13} className="animate-spin" />
             <span>AI is working...</span>
           </div>
@@ -396,9 +382,8 @@ export default function AIChat({ projectId, terminalSocketId, onFilesChanged }) 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* INPUT */}
-      <div className="border-t border-white/10 p-3">
-        <div className="flex items-end gap-2 rounded-lg border border-white/10 bg-white/[0.04] p-2 transition-colors focus-within:border-brand-lime/60">
+      <div className="shrink-0 border-t border-white/10 p-3">
+        <div className="flex items-end gap-2 rounded-2xl border border-white/15 bg-white/[0.04] py-1.5 pl-3.5 pr-1.5 transition-colors focus-within:border-white/40">
           <textarea
             ref={textareaRef}
             value={input}
@@ -406,17 +391,21 @@ export default function AIChat({ projectId, terminalSocketId, onFilesChanged }) 
             onKeyDown={handleKeyDown}
             disabled={loading}
             placeholder="Ask AI to build something..."
-            rows={2}
-            className="flex-1 resize-none bg-transparent text-[13px] text-zinc-200 outline-none placeholder:text-zinc-600"
+            rows={1}
+            className="max-h-[140px] min-h-[28px] flex-1 resize-none self-center bg-transparent py-1 text-[16px] leading-[20px] text-white outline-none placeholder:text-white/40 disabled:opacity-60 md:text-[13px]"
           />
 
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            type="button"
+            whileTap={{ scale: 0.92 }}
             onClick={handleSend}
-            disabled={loading || !input.trim()}
+            disabled={!canSend}
             aria-label="Send message"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-lime text-night transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors motion-reduce:transition-none ${
+              canSend
+                ? "bg-brand-lime text-night hover:bg-white"
+                : "bg-white/10 text-white/30"
+            } disabled:cursor-not-allowed`}
           >
             {loading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
           </motion.button>

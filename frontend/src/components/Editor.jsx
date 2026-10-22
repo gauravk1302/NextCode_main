@@ -64,13 +64,13 @@ export default function Editor({ activeTab, openTabs, setOpenTabs, setActiveTab 
 
   if (!activeTab) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-[#0a0a0c] text-zinc-600">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02]">
-          <Circle size={22} className="text-zinc-700" />
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-black text-white/40">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
+          <Circle size={22} className="text-white/20" />
         </div>
         <div className="flex flex-col items-center gap-1">
-          <span className="text-sm font-medium text-zinc-400">No file open</span>
-          <span className="text-xs text-zinc-600">Select a file from Explorer to start editing</span>
+          <span className="text-sm font-medium text-white/80">No file open</span>
+          <span className="text-xs text-white/40">Select a file from Explorer to start editing</span>
         </div>
       </div>
     );
@@ -79,9 +79,8 @@ export default function Editor({ activeTab, openTabs, setOpenTabs, setActiveTab 
   const ActiveIcon = getFileMeta(activeTab.name).icon;
 
   return (
-    <div className="flex flex-1 flex-col bg-[#0a0a0c]">
-      {/* TAB BAR */}
-      <div className="flex h-10 shrink-0 items-center overflow-x-auto border-b border-white/[0.06] bg-[#111113]/90">
+    <div className="flex flex-1 flex-col bg-black">
+      <div className="flex h-10 shrink-0 items-center overflow-x-auto border-b border-white/10 bg-black">
         <AnimatePresence initial={false}>
           {openTabs.map((tab) => {
             const active = activeTab._id === tab._id;
@@ -97,19 +96,19 @@ export default function Editor({ activeTab, openTabs, setOpenTabs, setActiveTab 
                 exit={{ opacity: 0, width: 0 }}
                 transition={{ duration: 0.15 }}
                 onClick={() => setActiveTab(tab)}
-                className={`group relative flex h-full cursor-pointer items-center gap-2 whitespace-nowrap border-r border-white/[0.05] px-3.5 transition-colors ${
-                  active ? "bg-[#0a0a0c] text-white" : "text-zinc-500 hover:bg-white/[0.02] hover:text-zinc-300"
+                className={`group relative flex h-full cursor-pointer items-center gap-2 whitespace-nowrap border-r border-white/10 px-3.5 transition-colors ${
+                  active ? "bg-white/[0.04] text-white" : "text-white/50 hover:bg-white/[0.02] hover:text-white"
                 }`}
               >
                 <Icon size={14} className={color} />
                 <span className="text-[13px]">{tab.name}</span>
 
                 {active && dirty ? (
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-400" />
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-orange" />
                 ) : (
                   <button
                     onClick={(e) => closeTab(e, tab)}
-                    className="rounded p-0.5 text-zinc-500 opacity-0 hover:bg-white/10 hover:text-white group-hover:opacity-100"
+                    className="rounded p-0.5 text-white/40 opacity-0 hover:bg-white/10 hover:text-white group-hover:opacity-100"
                   >
                     <X size={13} />
                   </button>
@@ -118,7 +117,7 @@ export default function Editor({ activeTab, openTabs, setOpenTabs, setActiveTab 
                 {active && (
                   <motion.div
                     layoutId="active-tab-indicator"
-                    className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-sky-400 to-violet-400"
+                    className="absolute inset-x-0 bottom-0 h-[2px] bg-brand-lime"
                     transition={{ duration: 0.2, ease: "easeOut" }}
                   />
                 )}
@@ -128,12 +127,11 @@ export default function Editor({ activeTab, openTabs, setOpenTabs, setActiveTab 
         </AnimatePresence>
       </div>
 
-      {/* TOOLBAR */}
-      <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.06] px-4">
-        <div className="flex items-center gap-2 text-zinc-400">
+      <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/10 px-4">
+        <div className="flex items-center gap-2 text-white/60">
           <ActiveIcon size={14} className={getFileMeta(activeTab.name).color} />
-          <span className="text-[13px]">{activeTab.name}</span>
-          {isDirty && <span className="text-[11px] text-zinc-600">&bull; unsaved</span>}
+          <span className="text-[13px] text-white/80">{activeTab.name}</span>
+          {isDirty && <span className="text-[11px] text-brand-orange">&bull; unsaved</span>}
         </div>
 
         <motion.button
@@ -141,7 +139,7 @@ export default function Editor({ activeTab, openTabs, setOpenTabs, setActiveTab 
           whileTap={{ scale: 0.97 }}
           onClick={save}
           disabled={saving || !isDirty}
-          className="flex items-center gap-2 rounded-lg bg-gradient-to-b from-sky-500 to-sky-600 px-3 py-1.5 text-xs font-medium text-white shadow-[0_1px_0_rgba(255,255,255,0.2)_inset] transition-colors hover:from-sky-400 hover:to-sky-500 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex items-center gap-2 rounded-lg bg-brand-lime px-3 py-1.5 text-xs font-bold text-night transition-colors hover:bg-white disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/30"
         >
           <AnimatePresence mode="wait" initial={false}>
             {saving ? (
@@ -182,7 +180,6 @@ export default function Editor({ activeTab, openTabs, setOpenTabs, setActiveTab 
         </motion.button>
       </div>
 
-      {/* MONACO */}
       <div className="min-h-0 flex-1">
         <MonacoEditor
           height="100%"

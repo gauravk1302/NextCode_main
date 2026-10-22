@@ -41,10 +41,8 @@ export default function Folder({
   const [newName, setNewName] = useState("");
   const [renameError, setRenameError] = useState("");
 
-  // Top level (root) folder ko rename/delete nahi karna
   const isRoot = !isChild;
 
-  // ---------------- CREATE FOLDER ----------------
   const handleCreateFolder = async () => {
     if (!folderName.trim()) return;
     try {
@@ -57,7 +55,6 @@ export default function Folder({
     }
   };
 
-  // ---------------- CREATE FILE ----------------
   const handleCreateFile = async () => {
     if (!fileName.trim()) return;
     try {
@@ -71,7 +68,6 @@ export default function Folder({
     }
   };
 
-  // ---------------- RENAME ----------------
   const startRename = () => {
     setMenu(null);
     setNewName(node.name);
@@ -107,7 +103,6 @@ export default function Folder({
     }
   };
 
-  // ---------------- DELETE ----------------
   const handleDelete = async () => {
     setMenu(null);
 
@@ -125,7 +120,6 @@ export default function Folder({
     }
   };
 
-  // ---------------- RENAME INPUT ----------------
   const renameInput = (
     <input
       autoFocus
@@ -142,11 +136,10 @@ export default function Folder({
         if (e.key === "Escape") cancelRename();
       }}
       onBlur={cancelRename}
-      className="min-w-0 flex-1 rounded-md border border-sky-400/50 bg-white/[0.04] px-2 py-0.5 text-[13px] text-white outline-none ring-2 ring-sky-400/15"
+      className="min-w-0 flex-1 rounded-md border border-brand-lime bg-white/[0.04] px-2 py-0.5 text-[13px] text-white outline-none ring-1 ring-brand-lime"
     />
   );
 
-  // ---------------- FILE ----------------
   if (node.type === "file") {
     const { icon: FileTypeIcon, color: fileColor } = getFileIcon(node.name);
 
@@ -155,7 +148,7 @@ export default function Folder({
         <motion.div
           whileHover={{ x: 2 }}
           transition={{ duration: 0.15, ease: "easeOut" }}
-          className="group flex items-center justify-between py-1.5 px-3 rounded-lg hover:bg-white/[0.05] cursor-pointer transition-colors"
+          className="group flex cursor-pointer items-center justify-between rounded-lg px-3 py-1.5 transition-colors hover:bg-white/[0.05]"
           onClick={async () => {
             if (renaming) return;
             const data = await getFile(node._id);
@@ -172,7 +165,7 @@ export default function Folder({
             {renaming ? (
               renameInput
             ) : (
-              <span className="truncate text-[13px] text-zinc-400 transition-colors group-hover:text-zinc-100">
+              <span className="truncate text-[13px] text-white/60 transition-colors group-hover:text-white">
                 {node.name}
               </span>
             )}
@@ -180,7 +173,7 @@ export default function Folder({
         </motion.div>
 
         {renameError && (
-          <p className="px-3 pb-1 text-[11px] text-red-400">{renameError}</p>
+          <p className="px-3 pb-1 text-[11px] text-brand-coral">{renameError}</p>
         )}
 
         <AnimatePresence>
@@ -198,18 +191,18 @@ export default function Folder({
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.96, y: -6 }}
                 transition={{ duration: 0.14, ease: "easeOut" }}
-                className="fixed z-50 w-48 rounded-xl border border-white/[0.08] bg-[#17171a]/95 py-1.5 shadow-2xl shadow-black/50 backdrop-blur-xl"
+                className="fixed z-50 w-48 rounded-xl border border-white/10 bg-black py-1.5 shadow-2xl shadow-black/80"
                 style={{ left: menu.x, top: menu.y }}
               >
                 <button
-                  className="mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-md px-3 py-2 text-[13px] text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+                  className="mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-white/80 transition-colors hover:bg-white/10 hover:text-white"
                   onClick={startRename}
                 >
                   <Pencil size={13} />
                   Rename
                 </button>
                 <button
-                  className="mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-md px-3 py-2 text-[13px] text-red-400 transition-colors hover:bg-red-500/10"
+                  className="mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-brand-coral transition-colors hover:bg-brand-coral/10"
                   onClick={handleDelete}
                 >
                   <Trash2 size={13} />
@@ -223,7 +216,6 @@ export default function Folder({
     );
   }
 
-  // ---------------- FOLDER ----------------
   const folderColor = getFolderColor(node.name);
 
   return (
@@ -231,7 +223,7 @@ export default function Folder({
       <motion.div
         whileHover={{ x: 2 }}
         transition={{ duration: 0.15, ease: "easeOut" }}
-        className="group flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white/[0.05] transition-colors"
+        className="group flex items-center justify-between rounded-lg px-2 py-1.5 transition-colors hover:bg-white/[0.05]"
         onContextMenu={(e) => {
           e.preventDefault();
           setMenu({ x: e.clientX, y: e.clientY });
@@ -248,7 +240,7 @@ export default function Folder({
             transition={{ duration: 0.15, ease: "easeOut" }}
             className="shrink-0"
           >
-            <ChevronRight size={14} className="text-zinc-500" />
+            <ChevronRight size={14} className="text-white/40" />
           </motion.div>
 
           {open ? (
@@ -260,7 +252,7 @@ export default function Folder({
           {renaming ? (
             renameInput
           ) : (
-            <span className="truncate text-[13px] text-zinc-300 transition-colors group-hover:text-white">
+            <span className="truncate text-[13px] text-white/80 transition-colors group-hover:text-white">
               {node.name}
             </span>
           )}
@@ -270,7 +262,7 @@ export default function Folder({
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.92 }}
-            className="rounded-md p-1 text-zinc-500 hover:bg-white/10 hover:text-white"
+            className="rounded-md p-1 text-white/40 hover:bg-white/10 hover:text-white"
             onClick={(e) => {
               e.stopPropagation();
               setOpen(true);
@@ -283,7 +275,7 @@ export default function Folder({
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.92 }}
-            className="rounded-md p-1 text-zinc-500 hover:bg-white/10 hover:text-white"
+            className="rounded-md p-1 text-white/40 hover:bg-white/10 hover:text-white"
             onClick={(e) => {
               e.stopPropagation();
               setOpen(true);
@@ -296,7 +288,7 @@ export default function Folder({
       </motion.div>
 
       {renameError && (
-        <p className="px-3 pb-1 text-[11px] text-red-400">{renameError}</p>
+        <p className="px-3 pb-1 text-[11px] text-brand-coral">{renameError}</p>
       )}
 
       <AnimatePresence>
@@ -314,11 +306,11 @@ export default function Folder({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: -6 }}
               transition={{ duration: 0.14, ease: "easeOut" }}
-              className="fixed z-50 w-52 rounded-xl border border-white/[0.08] bg-[#17171a]/95 py-1.5 shadow-2xl shadow-black/50 backdrop-blur-xl"
+              className="fixed z-50 w-52 rounded-xl border border-white/10 bg-black py-1.5 shadow-2xl shadow-black/80"
               style={{ left: menu.x, top: menu.y }}
             >
               <button
-                className="mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+                className="mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] text-white/80 transition-colors hover:bg-white/10 hover:text-white"
                 onClick={() => {
                   setMenu(null);
                   onNewFile(node);
@@ -329,7 +321,7 @@ export default function Folder({
               </button>
 
               <button
-                className="mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+                className="mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] text-white/80 transition-colors hover:bg-white/10 hover:text-white"
                 onClick={() => {
                   setMenu(null);
                   onNewFolder(node);
@@ -341,10 +333,10 @@ export default function Folder({
 
               {!isRoot && (
                 <>
-                  <div className="my-1 h-px bg-white/[0.08]" />
+                  <div className="my-1 h-px bg-white/10" />
 
                   <button
-                    className="mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-md px-3 py-2 text-[13px] text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+                    className="mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-white/80 transition-colors hover:bg-white/10 hover:text-white"
                     onClick={startRename}
                   >
                     <Pencil size={13} />
@@ -352,7 +344,7 @@ export default function Folder({
                   </button>
 
                   <button
-                    className="mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-md px-3 py-2 text-[13px] text-red-400 transition-colors hover:bg-red-500/10"
+                    className="mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-brand-coral transition-colors hover:bg-brand-coral/10"
                     onClick={handleDelete}
                   >
                     <Trash2 size={13} />
@@ -372,7 +364,7 @@ export default function Folder({
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.16, ease: "easeOut" }}
-            className="ml-5 overflow-hidden border-l border-white/[0.05] pl-1"
+            className="ml-5 overflow-hidden border-l border-white/10 pl-1"
           >
             {node.children?.map((child) => (
               <Folder
@@ -399,7 +391,7 @@ export default function Folder({
                   autoFocus
                   value={folderName}
                   placeholder="Folder Name"
-                  className="w-full rounded-md border border-white/[0.1] bg-white/[0.04] px-2.5 py-1.5 text-[13px] text-white placeholder-zinc-500 outline-none transition-all focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/15"
+                  className="w-full rounded-lg border border-white/15 bg-white/[0.04] px-2.5 py-1.5 text-[13px] text-white placeholder-white/30 outline-none transition-colors focus:border-brand-lime/60 focus:bg-white/[0.06]"
                   onChange={(e) => setFolderName(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleCreateFolder();
@@ -420,7 +412,7 @@ export default function Folder({
                   autoFocus
                   value={fileName}
                   placeholder="File Name"
-                  className="w-full rounded-md border border-white/[0.1] bg-white/[0.04] px-2.5 py-1.5 text-[13px] text-white placeholder-zinc-500 outline-none transition-all focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/15"
+                  className="w-full rounded-lg border border-white/15 bg-white/[0.04] px-2.5 py-1.5 text-[13px] text-white placeholder-white/30 outline-none transition-colors focus:border-brand-lime/60 focus:bg-white/[0.06]"
                   onChange={(e) => setFileName(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleCreateFile();
