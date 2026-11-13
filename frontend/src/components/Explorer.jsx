@@ -20,11 +20,11 @@ export default function Explorer({
       animate={{ opacity: 1, x: 0, width: 288 }}
       exit={{ opacity: 0, x: -16, width: 0 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      className="flex flex-col overflow-hidden border-r border-white/10 bg-black"
+      className="flex flex-col overflow-hidden border-r border-white/10 bg-black font-['DM_Sans',sans-serif]"
     >
       <div className="flex h-10 w-72 shrink-0 items-center justify-between border-b border-white/10 px-3">
-        <span className="text-[11px] font-semibold tracking-wider text-white/50">
-          EXPLORER
+        <span className="font-['Anton',sans-serif] text-[13px] font-normal uppercase tracking-wider text-white">
+          Explorer
         </span>
 
         <motion.button
@@ -32,7 +32,7 @@ export default function Explorer({
           whileTap={{ scale: 0.9 }}
           transition={{ duration: 0.2 }}
           onClick={reloadTree}
-          className="rounded-md p-1 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+          className="rounded-md p-1 text-zinc-400 transition-colors hover:bg-[#E8FF3F]/10 hover:text-[#E8FF3F]"
           title="Refresh"
         >
           <RefreshCw size={14} />
@@ -45,16 +45,16 @@ export default function Explorer({
           [&::-webkit-scrollbar]:w-1.5
           [&::-webkit-scrollbar-track]:bg-transparent
           [&::-webkit-scrollbar-thumb]:rounded-full
-          [&::-webkit-scrollbar-thumb]:bg-white/10
-          hover:[&::-webkit-scrollbar-thumb]:bg-white/20
+          [&::-webkit-scrollbar-thumb]:bg-[#A78BFA]/30
+          hover:[&::-webkit-scrollbar-thumb]:bg-[#A78BFA]/60
           [&::-webkit-scrollbar-thumb]:transition-colors
         "
-        style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}
+        style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(167,139,250,0.4) transparent" }}
       >
         {tree.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-3 py-10 text-center">
-            <FolderTree size={22} className="text-white/20" />
-            <span className="text-[12px] text-white/40">Empty workspace</span>
+            <FolderTree size={22} className="text-[#A78BFA]" />
+            <span className="text-[12px] text-zinc-500">Empty workspace</span>
           </div>
         ) : (
           tree.map((node) => (

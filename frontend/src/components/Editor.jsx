@@ -1,14 +1,40 @@
 import MonacoEditor from "@monaco-editor/react";
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Save, X, Circle, Check } from "lucide-react";
+import { Circle, X } from "lucide-react";
 import { updateFile } from "../features/file";
 import { getFileIcon as getFileMeta } from "../utils/fileIcons";
 
+// Plain theme: black bg, no syntax colors - sab text ek hi color ka
+const definePlainTheme = (monaco) => {
+  monaco.editor.defineTheme("nextcode-plain", {
+    base: "vs-dark",
+    inherit: true,
+    rules: [
+      { token: "", foreground: "E5E7EB" }, // sab kuch ek hi plain color
+    ],
+    colors: {
+      "editor.background": "#000000",
+      "editor.foreground": "#E5E7EB",
+      "editorLineNumber.foreground": "#4B5563",
+      "editorLineNumber.activeForeground": "#E8FF3F",
+      "editorCursor.foreground": "#E8FF3F",
+      "editor.selectionBackground": "#A78BFA55",
+      "editor.inactiveSelectionBackground": "#A78BFA22",
+      "editor.lineHighlightBackground": "#FFFFFF08",
+      "editorIndentGuide.background1": "#FFFFFF10",
+      "editorIndentGuide.activeBackground1": "#A78BFA66",
+      "editorWidget.background": "#0A0A0A",
+      "editorSuggestWidget.background": "#0A0A0A",
+      "editorSuggestWidget.selectedBackground": "#A78BFA33",
+      "scrollbarSlider.background": "#A78BFA33",
+      "scrollbarSlider.hoverBackground": "#A78BFA66",
+    },
+  });
+};
+
 export default function Editor({ activeTab, openTabs, setOpenTabs, setActiveTab }) {
   const [code, setCode] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [justSaved, setJustSaved] = useState(false);
 
   useEffect(() => {
     setCode(activeTab?.content || "");
@@ -19,24 +45,19 @@ export default function Editor({ activeTab, openTabs, setOpenTabs, setActiveTab 
     [code, activeTab]
   );
 
+  // Silent save (Ctrl+S) - button nahi dikhega
   const save = async () => {
-    if (!activeTab) return;
+    if (!activeTab || !isDirty) return;
 
     try {
-      setSaving(true);
       await updateFile(activeTab._id, code);
 
       setActiveTab({ ...activeTab, content: code });
       setOpenTabs((tabs) =>
         tabs.map((tab) => (tab._id === activeTab._id ? { ...tab, content: code } : tab))
       );
-
-      setJustSaved(true);
-      setTimeout(() => setJustSaved(false), 1500);
     } catch (error) {
       console.log(error);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -64,28 +85,29 @@ export default function Editor({ activeTab, openTabs, setOpenTabs, setActiveTab 
 
   if (!activeTab) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-black text-white/40">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
-          <Circle size={22} className="text-white/20" />
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-black font-['DM_Sans',sans-serif] text-zinc-600">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[#A78BFA]/30 bg-[#A78BFA]/10">
+          <Circle size={22} className="text-[#A78BFA]" />
         </div>
         <div className="flex flex-col items-center gap-1">
-          <span className="text-sm font-medium text-white/80">No file open</span>
-          <span className="text-xs text-white/40">Select a file from Explorer to start editing</span>
+          <span className="font-['Anton',sans-serif] text-lg font-normal uppercase tracking-wide text-white">
+            No file open
+          </span>
+          <span className="text-xs text-zinc-500">Select a file from Explorer to start editing</span>
         </div>
       </div>
     );
   }
 
-  const ActiveIcon = getFileMeta(activeTab.name).icon;
-
   return (
-    <div className="flex flex-1 flex-col bg-black">
+    <div className="flex flex-1 flex-col bg-black font-['DM_Sans',sans-serif]">
+      {/* TAB BAR */}
       <div className="flex h-10 shrink-0 items-center overflow-x-auto border-b border-white/10 bg-black">
         <AnimatePresence initial={false}>
           {openTabs.map((tab) => {
             const active = activeTab._id === tab._id;
             const { icon: Icon, color } = getFileMeta(tab.name);
-            const dirty = active ? isDirty : tab.content !== (tab._savedContent ?? tab.content);
+            const dirty = active ? isDirty : false;
 
             return (
               <motion.div
@@ -97,18 +119,20 @@ export default function Editor({ activeTab, openTabs, setOpenTabs, setActiveTab 
                 transition={{ duration: 0.15 }}
                 onClick={() => setActiveTab(tab)}
                 className={`group relative flex h-full cursor-pointer items-center gap-2 whitespace-nowrap border-r border-white/10 px-3.5 transition-colors ${
-                  active ? "bg-white/[0.04] text-white" : "text-white/50 hover:bg-white/[0.02] hover:text-white"
+                  active
+                    ? "bg-white/[0.06] text-white"
+                    : "text-zinc-500 hover:bg-white/[0.03] hover:text-[#A78BFA]"
                 }`}
               >
                 <Icon size={14} className={color} />
                 <span className="text-[13px]">{tab.name}</span>
 
-                {active && dirty ? (
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-orange" />
+                {dirty ? (
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#E8FF3F]" />
                 ) : (
                   <button
                     onClick={(e) => closeTab(e, tab)}
-                    className="rounded p-0.5 text-white/40 opacity-0 hover:bg-white/10 hover:text-white group-hover:opacity-100"
+                    className="rounded p-0.5 text-zinc-500 opacity-0 hover:bg-white/10 hover:text-[#E8FF3F] group-hover:opacity-100"
                   >
                     <X size={13} />
                   </button>
@@ -117,7 +141,7 @@ export default function Editor({ activeTab, openTabs, setOpenTabs, setActiveTab 
                 {active && (
                   <motion.div
                     layoutId="active-tab-indicator"
-                    className="absolute inset-x-0 bottom-0 h-[2px] bg-brand-lime"
+                    className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-[#E8FF3F] to-[#FF9A22]"
                     transition={{ duration: 0.2, ease: "easeOut" }}
                   />
                 )}
@@ -127,63 +151,14 @@ export default function Editor({ activeTab, openTabs, setOpenTabs, setActiveTab 
         </AnimatePresence>
       </div>
 
-      <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/10 px-4">
-        <div className="flex items-center gap-2 text-white/60">
-          <ActiveIcon size={14} className={getFileMeta(activeTab.name).color} />
-          <span className="text-[13px] text-white/80">{activeTab.name}</span>
-          {isDirty && <span className="text-[11px] text-brand-orange">&bull; unsaved</span>}
-        </div>
+      {/* TOOLBAR REMOVED - ab file name aur Save button nahi dikhega */}
 
-        <motion.button
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={save}
-          disabled={saving || !isDirty}
-          className="flex items-center gap-2 rounded-lg bg-brand-lime px-3 py-1.5 text-xs font-bold text-night transition-colors hover:bg-white disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/30"
-        >
-          <AnimatePresence mode="wait" initial={false}>
-            {saving ? (
-              <motion.span
-                key="saving"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex items-center gap-2"
-              >
-                <Loader2 size={13} className="animate-spin" />
-                Saving...
-              </motion.span>
-            ) : justSaved ? (
-              <motion.span
-                key="saved"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex items-center gap-2"
-              >
-                <Check size={13} />
-                Saved
-              </motion.span>
-            ) : (
-              <motion.span
-                key="save"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex items-center gap-2"
-              >
-                <Save size={13} />
-                Save
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </motion.button>
-      </div>
-
+      {/* MONACO */}
       <div className="min-h-0 flex-1">
         <MonacoEditor
           height="100%"
-          theme="vs-dark"
+          theme="nextcode-plain"
+          beforeMount={definePlainTheme}
           language={activeTab.language || "plaintext"}
           value={code}
           onChange={(value) => setCode(value || "")}

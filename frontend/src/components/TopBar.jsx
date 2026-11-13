@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { SquareTerminal, Eye, Code2 } from "lucide-react";
+import { Share2, Settings, Check } from "lucide-react";
 
-function ToggleButton({ active, onClick, label, activeClass, children }) {
+function TopBarButton({ onClick, label, children }) {
   return (
     <motion.button
       type="button"
@@ -13,26 +13,17 @@ function ToggleButton({ active, onClick, label, activeClass, children }) {
       onClick={onClick}
       title={label}
       aria-label={label}
-      aria-pressed={active}
-      className={`flex h-9 w-9 items-center justify-center rounded-full border transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white motion-reduce:transition-none sm:h-8 sm:w-8 ${
-        active
-          ? `border-transparent text-night ${activeClass}`
-          : "border-white/15 text-white/60 hover:border-white/30 hover:text-white"
-      }`}
+      className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/60 transition-colors duration-150 hover:border-white/30 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white motion-reduce:transition-none sm:h-8 sm:w-8"
     >
       {children}
     </motion.button>
   );
 }
 
-export default function TopBar({
-  showBottomPanel,
-  setShowBottomPanel,
-  showPreview,
-  setShowPreview,
-}) {
+export default function TopBar() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const { currentProject, loading } = useSelector((state) => state.project || {});
   const { userData } = useSelector((state) => state.user || {});
@@ -58,6 +49,12 @@ export default function TopBar({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [menuOpen]);
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const goTo = (path) => {
     setMenuOpen(false);
@@ -95,23 +92,21 @@ export default function TopBar({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        <ToggleButton
-          active={showPreview}
-          onClick={() => setShowPreview?.((v) => !v)}
-          label={showPreview ? "Show editor" : "Show preview"}
-          activeClass="bg-brand-lime"
+        <TopBarButton
+          onClick={handleShare}
+          label={copied ? "Link Copied!" : "Share Project"}
         >
-          {showPreview ? <Eye size={16} /> : <Code2 size={16} />}
-        </ToggleButton>
+          {copied ? <Check size={16} className="text-brand-lime" /> : <Share2 size={16} />}
+        </TopBarButton>
 
-        <ToggleButton
-          active={showBottomPanel}
-          onClick={() => setShowBottomPanel?.((v) => !v)}
-          label={showBottomPanel ? "Hide terminal" : "Show terminal"}
-          activeClass="bg-brand-green"
+        <TopBarButton
+          onClick={() => {
+            /* Add settings modal or action here if needed */
+          }}
+          label="Settings"
         >
-          <SquareTerminal size={16} />
-        </ToggleButton>
+          <Settings size={16} />
+        </TopBarButton>
 
         <div className="mx-1 h-5 w-px bg-white/10" />
 

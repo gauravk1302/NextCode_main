@@ -1,23 +1,22 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "../utils/firebase";
+import { login } from "../features/login";
+import { logout } from "../features/logout";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
-import {
-  Plus,
-  FolderOpen,
-  Search,
-  X,
-  ArrowUpRight,
-  Clock,
-  FolderGit2,
-  Rocket,
-  Sparkles,
-} from "lucide-react";
 
 import Navbar from "../components/Nav";
+import Sidebar from "../components/Sidebar";
+
+import { Plus, FolderOpen, Loader2, Menu, X } from "lucide-react";
+import { FcGoogle } from "react-icons/fc";
+
+import { setUserdata } from "../redux/userSlice";
+import { setProjects, starProject } from "../redux/projectSlice";
+
 import CreateProjectModal from "../components/CreateProjectModal";
 import { ProjectCard } from "../components/ProjectCard";
-
-import { logout } from "../features/logout";
+import { useNavigate } from "react-router-dom";
 import { createRoot } from "../features/file";
 import {
   createProject,
@@ -27,74 +26,52 @@ import {
   deleteProject,
 } from "../features/project";
 
-import { setUserdata } from "../redux/userSlice";
-import { setProjects } from "../redux/projectSlice";
-import { timeAgo } from "../utils/TimeAgo";
-
-// Cards cycle through these; ProjectCard reads the `accent` prop.
-const ACCENTS = ["orange", "lavender", "coral", "green"];
-
-// `tone` is a full Tailwind bg class (must be written out in full so Tailwind can see it).
-function StatCard({ icon: Icon, label, value, hint, tone }) {
-  return (
-    <div className={`cut rounded-2xl p-4 text-night ${tone}`}>
-      <div className="flex items-center justify-between">
-        <span className="text-[13px] font-semibold">{label}</span>
-        <Icon size={16} strokeWidth={2} />
-      </div>
-
-      <div className="mt-3 font-display text-[44px] leading-none tabular-nums">
-        {value}
-      </div>
-
-      <p className="mt-2 text-[12px] font-medium opacity-75">{hint}</p>
-    </div>
-  );
-}
-
-const primaryBtn = `
-  inline-flex items-center justify-center gap-2 rounded-full bg-white
-  px-6 py-3 text-[14px] font-semibold text-black transition-colors
-  hover:bg-brand-lime focus-visible:outline-2 focus-visible:outline-offset-2
-  focus-visible:outline-white motion-reduce:transition-none
-`;
+// =====================================================
+// DASHBOARD
+// =====================================================
 
 function Dashboard() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  // ===================================================
+  // REDUX
+  // ===================================================
+
   const userdata = useSelector((state) => state.user.userData);
   const { projects = [] } = useSelector((state) => state.project);
 
+  // ===================================================
+  // STATE
+  // ===================================================
+
   const [activeSection, setActiveSection] = useState("Projects");
-  // Stats + "continue" strip always use the full list, even while the grid shows Starred.
-  const [allProjects, setAllProjects] = useState([]);
-  const [statsReady, setStatsReady] = useState(false);
   const [loadingProjects, setLoadingProjects] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false);
   const [openModal, setOpenModal] = useState(false);
-  const [query, setQuery] = useState("");
-  const [sortBy, setSortBy] = useState("recent");
-
-  const searchRef = useRef(null);
-
-  // "/" focuses the search box
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key !== "/") return;
-
-      const tag = document.activeElement?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
-
-      e.preventDefault();
-      searchRef.current?.focus();
-    };
-
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // ===================================================
-  // API HANDLERS (logic unchanged)
+  // LOGIN
+  // ===================================================
+
+  const handleLogin = async () => {
+    setLoggingIn(true);
+
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const token = await result.user.getIdToken();
+      const data = await login(token);
+      dispatch(setUserdata(data));
+    } catch (error) {
+      console.log("Login error:", error);
+    } finally {
+      setLoggingIn(false);
+    }
+  };
+
+  // ===================================================
+  // LOGOUT
   // ===================================================
 
   const handleLogout = async () => {
@@ -107,21 +84,26 @@ function Dashboard() {
     }
   };
 
+  // ===================================================
+  // FETCH ALL PROJECTS
+  // ===================================================
+
   const fetchProjects = async () => {
     try {
       setLoadingProjects(true);
       const data = await getProjects();
-      const list = data?.projects || [];
-      dispatch(setProjects(list));
-      setAllProjects(list);
+      dispatch(setProjects(data?.projects || []));
     } catch (error) {
       console.log("Get projects error:", error);
       dispatch(setProjects([]));
     } finally {
       setLoadingProjects(false);
-      setStatsReady(true);
     }
   };
+
+  // ===================================================
+  // FETCH STARRED PROJECTS
+  // ===================================================
 
   const fetchStarredProjects = async () => {
     try {
@@ -136,8 +118,14 @@ function Dashboard() {
     }
   };
 
+  // ===================================================
+  // LOAD PROJECTS
+  // ===================================================
+
   useEffect(() => {
-    if (!userdata) return;
+    if (!userdata) {
+      return;
+    }
 
     if (activeSection === "Starred") {
       fetchStarredProjects();
@@ -146,17 +134,21 @@ function Dashboard() {
     }
   }, [userdata, activeSection]);
 
+  // ===================================================
+  // TOGGLE STAR
+  // ===================================================
+
   const handleToggleStar = async (project) => {
     try {
       const data = await toggleProjectStar(project._id);
 
-      if (!data?.success) return;
+      dispatch(starProject(project?._id));
 
-      setAllProjects((prev) =>
-        prev.map((p) => (p._id === project._id ? data.project : p)),
-      );
+      if (!data?.success) {
+        return;
+      }
 
-      // Starred page: an unstarred project leaves the list immediately.
+      // STARRED PAGE
       if (activeSection === "Starred") {
         if (!data.project.starred) {
           dispatch(setProjects(projects.filter((p) => p._id !== project._id)));
@@ -164,33 +156,50 @@ function Dashboard() {
         return;
       }
 
+      // ALL PROJECTS PAGE
       dispatch(
         setProjects(
-          projects.map((p) => (p._id === project._id ? data.project : p)),
-        ),
+          projects.map((p) => (p._id === project._id ? data.project : p))
+        )
       );
     } catch (error) {
       console.log("Toggle star error:", error);
     }
   };
 
+  // ===================================================
+  // DELETE PROJECT
+  // ===================================================
+
   const handleDelete = async (project) => {
     try {
       const data = await deleteProject(project._id);
 
-      if (!data?.success) return;
+      if (!data?.success) {
+        return;
+      }
 
-      setAllProjects((prev) => prev.filter((p) => p._id !== project._id));
       dispatch(setProjects(projects.filter((p) => p._id !== project._id)));
     } catch (error) {
       console.log("Delete project error:", error);
     }
   };
 
+  // ===================================================
+  // OPEN PROJECT
+  // ===================================================
+
   const handleOpenProject = (project) => {
-    if (!project?._id) return;
+    if (!project?._id) {
+      return;
+    }
+
     navigate(`/project/${project._id}`);
   };
+
+  // ===================================================
+  // CREATE PROJECT
+  // ===================================================
 
   const handleCreateProject = async (projectData) => {
     try {
@@ -201,13 +210,19 @@ function Dashboard() {
         return;
       }
 
+      // CREATE ROOT FOLDER
       await createRoot({
         projectId: result.project._id,
         projectName: result.project.name,
       });
 
+      // CLOSE MODAL
       setOpenModal(false);
+
+      // RETURN TO PROJECTS
       setActiveSection("Projects");
+
+      // REFRESH PROJECTS
       await fetchProjects();
     } catch (error) {
       console.log("Create project error:", error);
@@ -215,330 +230,568 @@ function Dashboard() {
   };
 
   // ===================================================
-  // DERIVED DATA
+  // NOT LOGGED IN
   // ===================================================
 
-  const now = new Date();
-
-  const projectsThisMonth = allProjects.filter((p) => {
-    if (!p?.createdAt) return false;
-    const d = new Date(p.createdAt);
+  if (!userdata) {
     return (
-      d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+      <div
+        className="
+          relative
+          flex
+          h-screen
+          w-full
+          items-center
+          justify-center
+          overflow-hidden
+          bg-black
+          px-4
+          font-['DM_Sans',sans-serif]
+        "
+      >
+        {/* Ambient glow */}
+
+        <div
+          className="
+            pointer-events-none
+            absolute
+            -top-32
+            left-1/2
+            h-[600px]
+            w-[600px]
+            -translate-x-1/2
+            rounded-full
+            bg-[#A78BFA]/[0.12]
+            blur-[120px]
+          "
+        />
+
+        <div
+          className="
+            pointer-events-none
+            absolute
+            -bottom-40
+            right-0
+            h-[420px]
+            w-[420px]
+            rounded-full
+            bg-[#FF9A22]/[0.08]
+            blur-[120px]
+          "
+        />
+
+        {/* Login Card */}
+
+        <div
+          className="
+            relative
+            w-full
+            max-w-sm
+            rounded-2xl
+            border
+            border-white/10
+            bg-white/[0.03]
+            p-6
+            sm:p-8
+            text-center
+            shadow-xl
+            shadow-black/60
+            backdrop-blur-xl
+          "
+        >
+          <div
+            className="
+              mx-auto
+              mb-5
+              flex
+              h-14
+              w-14
+              items-center
+              justify-center
+              rounded-xl
+              bg-[#E8FF3F]
+              shadow-lg
+              shadow-[#E8FF3F]/20
+            "
+          >
+            <span
+              className="
+                font-['Anton',sans-serif]
+                text-xl
+                tracking-wide
+                text-black
+              "
+            >
+              AI
+            </span>
+          </div>
+
+          <h2
+            className="
+              mb-2
+              font-['Anton',sans-serif]
+              text-2xl
+              sm:text-3xl
+              font-normal
+              uppercase
+              tracking-wide
+              text-white
+            "
+          >
+            Welcome to <span className="text-[#E8FF3F]">NextCode</span>
+          </h2>
+
+          <p
+            className="
+              mb-6
+              text-[13px]
+              sm:text-[13.5px]
+              leading-relaxed
+              text-zinc-400
+            "
+          >
+            Sign in to access your projects
+            and continue building.
+          </p>
+
+          <button
+            onClick={handleLogin}
+            disabled={loggingIn}
+            className="
+              flex
+              w-full
+              items-center
+              justify-center
+              gap-3
+              rounded-lg
+              bg-white
+              py-2.5
+              text-[13.5px]
+              font-semibold
+              text-black
+              shadow-sm
+              transition-colors
+              duration-150
+              hover:bg-[#E8FF3F]
+              disabled:opacity-70
+            "
+          >
+            {loggingIn ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <FcGoogle size={18} />
+            )}
+
+            {loggingIn ? "Signing in..." : "Continue with Google"}
+          </button>
+
+          <p
+            className="
+              mt-5
+              text-[11px]
+              text-zinc-600
+            "
+          >
+            By continuing you agree to our
+            Terms & Privacy Policy.
+          </p>
+        </div>
+      </div>
     );
-  }).length;
-
-  const deploymentsCount = userdata?.deployments ?? 0;
-  const creditsCount = userdata?.credits ?? 0;
-  const firstName = userdata?.name?.split(" ")[0] || "there";
-
-  const showStats = statsReady;
-
-  const byRecent = (a, b) =>
-    new Date(b?.updatedAt || b?.createdAt || 0) -
-    new Date(a?.updatedAt || a?.createdAt || 0);
-
-  const visibleProjects = useMemo(() => {
-    const q = query.trim().toLowerCase();
-
-    const list = q
-      ? projects.filter(
-          (p) =>
-            (p?.name || "").toLowerCase().includes(q) ||
-            (p?.description || "").toLowerCase().includes(q),
-        )
-      : [...projects];
-
-    if (sortBy === "name") {
-      list.sort((a, b) => (a?.name || "").localeCompare(b?.name || ""));
-    } else {
-      list.sort(byRecent);
-    }
-
-    return list;
-  }, [projects, query, sortBy]);
-
-  const lastProject =
-    showStats && allProjects.length > 0
-      ? [...allProjects].sort(byRecent)[0]
-      : null;
+  }
 
   // ===================================================
-  // UI
+  // DASHBOARD
   // ===================================================
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <Navbar user={userdata} onLogout={handleLogout} credits={creditsCount} />
+    <div
+      className="
+        relative
+        flex
+        h-screen
+        w-full
+        flex-col
+        overflow-hidden
+        bg-black
+        font-['DM_Sans',sans-serif]
+      "
+    >
+      {/* Ambient glow */}
 
-      <main className="mx-auto w-full max-w-[1200px] px-4 pb-20 sm:px-6 lg:px-8">
-        {/* HERO */}
-        <section className="grid gap-8 pb-10 pt-10 sm:pt-14 lg:grid-cols-[1.15fr_1fr] lg:items-end">
-          <div>
-            <h1 className="font-display text-[46px] uppercase leading-[0.98] sm:text-[68px] lg:text-[80px]">
-              Welcome back,
-              <br />
-              {firstName}.
-            </h1>
+      <div
+        className="
+          pointer-events-none
+          absolute
+          -top-40
+          left-1/3
+          hidden
+          h-[700px]
+          w-[700px]
+          rounded-full
+          bg-[#A78BFA]/[0.10]
+          blur-[140px]
+          md:block
+        "
+      />
 
-            <p className="mt-4 max-w-md text-[15px] text-white/60">
-              What are you building today?
-            </p>
+      <div
+        className="
+          pointer-events-none
+          absolute
+          right-0
+          top-1/3
+          hidden
+          h-[500px]
+          w-[500px]
+          rounded-full
+          bg-[#FF9A22]/[0.07]
+          blur-[130px]
+          md:block
+        "
+      />
+
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        {/* NAVBAR */}
+
+        <Navbar
+          user={userdata}
+          onLogout={handleLogout}
+          onToggleSidebar={() => setMobileSidebarOpen((v) => !v)}
+        />
+
+        <div className="relative flex min-h-0 flex-1">
+          {/* SIDEBAR — DESKTOP */}
+
+          <div className="hidden md:block">
+            <Sidebar
+              activeSection={activeSection}
+              setActiveSection={setActiveSection}
+              credits={userdata.credits || 0}
+            />
+          </div>
+
+          {/* SIDEBAR — MOBILE DRAWER */}
+
+          {mobileSidebarOpen && (
+            <div className="fixed inset-0 z-40 md:hidden">
+              {/* backdrop */}
+              <div
+                className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                onClick={() => setMobileSidebarOpen(false)}
+              />
+
+              {/* drawer panel */}
+              <div className="absolute left-0 top-0 h-full w-72 max-w-[80vw] border-r border-white/10 bg-black shadow-2xl">
+                <div className="flex items-center justify-between border-b border-white/10 px-4 py-4">
+                  <span className="font-['Anton',sans-serif] text-lg uppercase tracking-wide text-[#E8FF3F]">
+                    Menu
+                  </span>
+                  <button
+                    onClick={() => setMobileSidebarOpen(false)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 hover:bg-white/[0.08] hover:text-white"
+                    aria-label="Close menu"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <Sidebar
+                  activeSection={activeSection}
+                  setActiveSection={(section) => {
+                    setActiveSection(section);
+                    setMobileSidebarOpen(false);
+                  }}
+                  credits={userdata.credits || 0}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* MAIN */}
+
+          <main
+            className="
+              min-h-0
+              flex-1
+              overflow-y-auto
+              px-4
+              py-5
+              sm:px-6
+              sm:py-6
+              lg:px-8
+              lg:py-8
+              [scrollbar-width:thin]
+              [scrollbar-color:rgba(167,139,250,0.45)_transparent]
+              [&::-webkit-scrollbar]:w-2
+              [&::-webkit-scrollbar-track]:bg-transparent
+              [&::-webkit-scrollbar-thumb]:rounded-full
+              [&::-webkit-scrollbar-thumb]:bg-[#A78BFA]/40
+              [&::-webkit-scrollbar-thumb]:border-2
+              [&::-webkit-scrollbar-thumb]:border-solid
+              [&::-webkit-scrollbar-thumb]:border-transparent
+              [&::-webkit-scrollbar-thumb]:bg-clip-padding
+              hover:[&::-webkit-scrollbar-thumb]:bg-[#A78BFA]/70
+            "
+          >
+            {/* MOBILE MENU BUTTON */}
 
             <button
-              onClick={() => setOpenModal(true)}
-              className={`${primaryBtn} mt-7`}
+              onClick={() => setMobileSidebarOpen(true)}
+              className="
+                mb-4
+                flex
+                items-center
+                gap-2
+                rounded-lg
+                border
+                border-white/10
+                bg-white/[0.04]
+                px-3
+                py-2
+                text-[12.5px]
+                font-medium
+                text-zinc-300
+                shadow-sm
+                md:hidden
+              "
             >
-              <Plus size={16} strokeWidth={2.5} />
-              New project
+              <Menu size={15} className="text-[#E8FF3F]" />
+              Menu
             </button>
-          </div>
 
-          {showStats && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <StatCard
-                icon={FolderGit2}
-                label="Projects"
-                value={allProjects.length}
-                hint={`+${projectsThisMonth} this month`}
-                tone="bg-brand-green"
-              />
+            {/* HEADER */}
 
-              <StatCard
-                icon={Sparkles}
-                label="AI credits"
-                value={creditsCount}
-                hint="credits remaining"
-                tone="bg-brand-lime"
-              />
+            <div
+              className="
+                mb-6
+                sm:mb-8
+                flex
+                flex-col
+                sm:flex-row
+                sm:items-start
+                sm:justify-between
+                gap-3
+                sm:gap-4
+              "
+            >
+              <div>
+                <h1
+                  className="
+                    flex
+                    items-center
+                    gap-2
+                    font-['Anton',sans-serif]
+                    text-2xl
+                    sm:text-3xl
+                    lg:text-[34px]
+                    font-normal
+                    uppercase
+                    tracking-wide
+                    text-white
+                  "
+                >
+                  Welcome back,{" "}
+                  <span className="text-[#A78BFA]">
+                    {userdata?.name?.split(" ")[0] || "there"}
+                  </span>
+                  <span>👋</span>
+                </h1>
 
-              <StatCard
-                icon={Rocket}
-                label="Deployments"
-                value={deploymentsCount}
-                hint={
-                  deploymentsCount > 0
-                    ? "total deployments"
-                    : "no deployments yet"
-                }
-                tone="bg-brand-orange"
-              />
-            </div>
-          )}
-        </section>
-
-        {/* CONTINUE WHERE YOU LEFT OFF */}
-        {lastProject && !query && (
-          <button
-            onClick={() => handleOpenProject(lastProject)}
-            className="cut group mb-12 flex w-full items-center justify-between gap-4 rounded-2xl bg-brand-lavender px-5 py-4 text-left text-night transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-night motion-reduce:transition-none"
-          >
-            <div className="flex min-w-0 items-center gap-4">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-night text-white">
-                <Clock size={18} />
-              </span>
-
-              <div className="min-w-0">
-                <p className="text-[12.5px] font-semibold opacity-70">
-                  Continue where you left off
-                </p>
-
-                <p className="truncate font-display text-[28px] uppercase leading-tight">
-                  {lastProject.name}
+                <p
+                  className="
+                    mt-1
+                    text-[13px]
+                    sm:text-[13.5px]
+                    text-zinc-400
+                  "
+                >
+                  Ready to build something
+                  amazing today?
                 </p>
               </div>
+
+              {/* NEW PROJECT */}
+
+              <button
+                onClick={() => setOpenModal(true)}
+                className="
+                  flex
+                  w-full
+                  sm:w-auto
+                  shrink-0
+                  items-center
+                  justify-center
+                  gap-1.5
+                  rounded-lg
+                  bg-[#E8FF3F]
+                  px-4
+                  py-2.5
+                  text-[13.5px]
+                  font-bold
+                  text-black
+                  shadow-sm
+                  shadow-[#E8FF3F]/20
+                  transition-all
+                  duration-150
+                  hover:bg-[#FF9A22]
+                "
+              >
+                <Plus size={16} />
+                New Project
+              </button>
             </div>
 
-            <div className="flex shrink-0 items-center gap-3">
-              <span className="hidden text-[13px] font-medium sm:inline">
-                Updated{" "}
-                {timeAgo(lastProject.updatedAt || lastProject.createdAt)}
-              </span>
+            {/* PROJECT HEADING */}
 
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-night text-white">
-                <ArrowUpRight
-                  size={18}
-                  className="transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:transition-none"
-                />
-              </span>
-            </div>
-          </button>
-        )}
-
-        {/* PROJECTS HEADER + CONTROLS */}
-        <section>
-          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="flex items-center gap-3">
-              <h2 className="font-display text-[34px] uppercase leading-none sm:text-[44px]">
+            <div className="mb-4 flex items-center justify-between">
+              <h2
+                className="
+                  font-['Anton',sans-serif]
+                  text-lg
+                  sm:text-xl
+                  font-normal
+                  uppercase
+                  tracking-wide
+                  text-white
+                "
+              >
                 {activeSection === "Starred"
-                  ? "Starred projects"
-                  : "Recent projects"}
+                  ? "Starred Projects"
+                  : "Recent Projects"}
               </h2>
-
-              {!loadingProjects && projects.length > 0 && (
-                <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[12px] tabular-nums text-white/70">
-                  {visibleProjects.length}
-                </span>
-              )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              {/* section switch */}
-              <div className="flex rounded-full border border-white/10 p-1">
-                {[
-                  { key: "Projects", label: "All" },
-                  { key: "Starred", label: "Starred" },
-                ].map((s) => (
-                  <button
-                    key={s.key}
-                    aria-pressed={activeSection === s.key}
-                    onClick={() => {
-                      setQuery("");
-                      setActiveSection(s.key);
-                    }}
-                    className={`rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors motion-reduce:transition-none ${
-                      activeSection === s.key
-                        ? "bg-white text-black"
-                        : "text-white/60 hover:text-white"
-                    }`}
-                  >
-                    {s.label}
-                  </button>
+            {/* LOADING */}
+
+            {loadingProjects ? (
+              <div className="flex min-h-[300px] items-center justify-center">
+                <Loader2 size={28} className="animate-spin text-[#E8FF3F]" />
+              </div>
+            ) : projects?.length > 0 ? (
+              /* PROJECTS */
+
+              <div
+                className="
+                  mb-8
+                  grid
+                  grid-cols-1
+                  gap-3
+                  sm:grid-cols-2
+                  sm:gap-4
+                  lg:grid-cols-3
+                  xl:grid-cols-4
+                "
+              >
+                {projects.map((p) => (
+                  <ProjectCard
+                    key={p._id}
+                    project={p}
+                    onOpen={handleOpenProject}
+                    onToggleStar={handleToggleStar}
+                    onDelete={handleDelete}
+                  />
                 ))}
               </div>
+            ) : (
+              /* EMPTY */
 
-              {!loadingProjects && projects.length > 0 && (
-                <>
-                  <div className="relative flex-1 sm:flex-none">
-                    <Search
-                      size={14}
-                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/40"
-                    />
-
-                    <input
-                      ref={searchRef}
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Search projects"
-                      className="h-10 w-full rounded-full border border-white/10 bg-white/[0.04] pl-9 pr-10 text-[13px] text-white outline-none transition-colors placeholder:text-white/40 focus:border-white/40 motion-reduce:transition-none sm:w-60"
-                    />
-
-                    {query ? (
-                      <button
-                        onClick={() => setQuery("")}
-                        aria-label="Clear search"
-                        className="absolute right-2.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-white/50 hover:text-white"
-                      >
-                        <X size={13} />
-                      </button>
-                    ) : (
-                      <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-white/15 px-1.5 text-[11px] text-white/40 sm:block">
-                        /
-                      </kbd>
-                    )}
-                  </div>
-
-                  <div className="relative inline-flex w-[130px] shrink-0">
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                      aria-label="Sort projects"
-                      className="
-      h-10 w-full appearance-none
-      rounded-full border border-white/10
-      bg-[#050505] pl-5 pr-10
-      text-[13px] font-medium text-white
-      outline-none transition-all duration-200
-      hover:border-white/20
-      focus:border-white/30
-      cursor-pointer
-      [color-scheme:dark]
-    "
-                    >
-                      <option value="recent">Recent</option>
-                      <option value="name">Name</option>
-                    </select>
-
-                    <svg
-                      className="pointer-events-none absolute right-4 top-1/2
-      h-4 w-4 -translate-y-1/2 text-white/70"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="m7 10 5 5 5-5" />
-                    </svg>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* LIST */}
-          {loadingProjects ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                className="
+                  mb-8
+                  flex
+                  flex-col
+                  items-center
+                  justify-center
+                  rounded-2xl
+                  border
+                  border-dashed
+                  border-[#A78BFA]/30
+                  bg-white/[0.02]
+                  px-4
+                  py-12
+                  sm:py-16
+                  text-center
+                "
+              >
                 <div
-                  key={i}
-                  className="h-[176px] animate-pulse rounded-2xl bg-white/[0.06]"
-                />
-              ))}
-            </div>
-          ) : visibleProjects.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {visibleProjects.map((p, i) => (
-                <ProjectCard
-                  key={p._id}
-                  project={p}
-                  accent={ACCENTS[i % ACCENTS.length]}
-                  onOpen={handleOpenProject}
-                  onToggleStar={handleToggleStar}
-                  onDelete={handleDelete}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 px-4 py-14 text-center sm:py-20">
-              <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white/10">
-                <FolderOpen
-                  size={22}
-                  strokeWidth={1.75}
-                  className="text-white/70"
-                />
-              </span>
+                  className="
+                    mb-4
+                    flex
+                    h-14
+                    w-14
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-[#A78BFA]/15
+                  "
+                >
+                  <FolderOpen size={24} className="text-[#A78BFA]" />
+                </div>
 
-              <h3 className="mb-1.5 text-[16px] font-semibold">
-                {query
-                  ? "No matching projects"
-                  : activeSection === "Starred"
+                <h3
+                  className="
+                    mb-1.5
+                    font-['Anton',sans-serif]
+                    text-xl
+                    font-normal
+                    uppercase
+                    tracking-wide
+                    text-white
+                  "
+                >
+                  {activeSection === "Starred"
                     ? "No starred projects"
                     : "No projects yet"}
-              </h3>
+                </h3>
 
-              <p className="mb-6 max-w-xs text-[13.5px] text-white/50">
-                {query
-                  ? `Nothing found for "${query}". Try a different name.`
-                  : activeSection === "Starred"
-                    ? "Star a project and it will show up here."
-                    : "Create your first project and start coding."}
-              </p>
-
-              {activeSection === "Projects" && !query && (
-                <button
-                  onClick={() => setOpenModal(true)}
-                  className={primaryBtn}
+                <p
+                  className="
+                    mb-5
+                    max-w-xs
+                    text-[13px]
+                    text-zinc-500
+                  "
                 >
-                  <Plus size={16} strokeWidth={2.5} />
-                  Create project
-                </button>
-              )}
-            </div>
-          )}
-        </section>
-      </main>
+                  {activeSection === "Starred"
+                    ? "Star a project to see it here."
+                    : "Create your first project and start building something amazing!"}
+                </p>
+
+                {activeSection === "Projects" && (
+                  <button
+                    onClick={() => setOpenModal(true)}
+                    className="
+                      flex
+                      items-center
+                      gap-1.5
+                      rounded-lg
+                      bg-[#E8FF3F]
+                      px-4
+                      py-2.5
+                      text-[13.5px]
+                      font-bold
+                      text-black
+                      shadow-sm
+                      shadow-[#E8FF3F]/20
+                      transition-all
+                      duration-150
+                      hover:bg-[#FF9A22]
+                    "
+                  >
+                    <Plus size={16} />
+                    Create Project
+                  </button>
+                )}
+              </div>
+            )}
+          </main>
+        </div>
+      </div>
+
+      {/* =================================================
+          CREATE PROJECT MODAL
+      ================================================= */}
 
       <CreateProjectModal
         open={openModal}
